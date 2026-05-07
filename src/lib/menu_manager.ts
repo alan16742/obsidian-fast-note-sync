@@ -1,7 +1,7 @@
 import { Menu, MenuItem, setIcon, Platform } from 'obsidian';
 
 import { startupSync, startupFullSync, resetSettingSyncTime, rebuildAllHashes } from './operator';
-import { showSyncNotice } from './helps';
+import { showSyncNotice, isVersionNew } from './helps';
 import { NoteHistoryModal } from '../views/note-history/history-modal';
 import { ShareModal } from '../views/share-modal';
 import { RecycleBinModal } from '../views/recycle-bin-modal';
@@ -370,9 +370,24 @@ export class MenuManager {
   }
 
   refreshUpgradeBadge() {
+    // 1. 实时校验插件版本，如果已手动更新则清除红点标记 (Validate plugin version; clear badge if manually updated)
+    const pluginCurrent = this.plugin.manifest.version;
+    const pluginLatest = this.plugin.localStorageManager.getMetadata("pluginVersionNewName");
+    if (pluginLatest && !isVersionNew(pluginCurrent, pluginLatest)) {
+      this.plugin.localStorageManager.setMetadata("pluginVersionIsNew", false);
+    }
+
+    // 2. 实时校验服务端版本，如果缓存的版本已达到最新则清除红点标记 (Validate server version; clear badge if cached version matches latest)
+    const serverCurrent = this.plugin.localStorageManager.getMetadata("serverVersion");
+    const serverLatest = this.plugin.localStorageManager.getMetadata("serverVersionNewName");
+    if (serverCurrent && serverLatest && !isVersionNew(serverCurrent, serverLatest)) {
+      this.plugin.localStorageManager.setMetadata("serverVersionIsNew", false);
+    }
+
     const pluginNew = this.plugin.localStorageManager.getMetadata("pluginVersionIsNew");
     const serverNew = this.plugin.localStorageManager.getMetadata("serverVersionIsNew");
     const hasNew = (pluginNew || serverNew);
+
     const show = hasNew ? "block" : "none";
 
     // 只有在开启了显示红点设置时才在外部图标上显示 / Only show on external icons if setting is enabled

@@ -562,10 +562,18 @@ export const formatFileSize = function (bytes: number): string {
  */
 export const isVersionNew = function (current: string, latest: string): boolean {
   if (!current || !latest) return false
-  const cleanCurrent = current.split("-")[0]
-  const cleanLatest = latest.split("-")[0]
-  return cleanCurrent !== cleanLatest
+  const cleanCurrent = current.split("-")[0].split(".").map(Number)
+  const cleanLatest = latest.split("-")[0].split(".").map(Number)
+
+  for (let i = 0; i < Math.max(cleanCurrent.length, cleanLatest.length); i++) {
+    const v1 = cleanCurrent[i] || 0
+    const v2 = cleanLatest[i] || 0
+    if (v2 > v1) return true
+    if (v2 < v1) return false
+  }
+  return false
 }
+
 
 /**
  * 通知接口定义

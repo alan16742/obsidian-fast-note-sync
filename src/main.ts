@@ -269,7 +269,6 @@ export default class FastSync extends Plugin {
     this.localStorageManager.startWatch()
 
     await this.loadSettings()
-    this.menuManager?.refreshUpgradeBadge()
 
     this.settingTab = new SettingTab(this.app, this)
     // 注册设置选项
