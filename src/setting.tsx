@@ -154,7 +154,7 @@ function showTestToast(top: number) {
   const toast = document.createElement("div")
   // 复用 .fns-mobile-toast 的样式，仅覆盖 top / Reuse .fns-mobile-toast styles, override top only
   toast.className = "fns-mobile-toast fns-preview-toast"
-  toast.style.top = `${top}px`
+  toast.style.setProperty("--fns-toast-top-preview", `${top}px`)
   toast.textContent = "Toast"
   document.body.appendChild(toast)
   setTimeout(() => {
@@ -389,7 +389,7 @@ export class SettingTab extends PluginSettingTab {
       for (let i = index + 1; i < children.length; i++) {
         const next = children[i]
         if (next.classList.contains("setting-item-heading")) break
-        if (next.style.display !== "none") {
+        if (!next.classList.contains("fns-hidden")) {
           shouldShow = true
           break
         }
@@ -549,7 +549,7 @@ export class SettingTab extends PluginSettingTab {
           isTablet: Platform.isTablet,
           platform: typeof process !== "undefined" ? process.platform : "unknown",
           arch: typeof process !== "undefined" ? process.arch : "unknown",
-          userAgent: navigator.userAgent,
+          userAgent: "Obsidian/" + ((this.app as any).version || "unknown"),
           versions:
             typeof process !== "undefined"
               ? {
@@ -565,7 +565,7 @@ export class SettingTab extends PluginSettingTab {
                 isNative: (window as any).Capacitor.isNative,
               }
             : "not found",
-          obsidianVersion: (this.app as any).version || navigator.userAgent.match(/obsidian\/([\d.]+)/)?.[1] || "unknown",
+          obsidianVersion: (this.app as any).version || "unknown",
         },
         pluginVersion: this.plugin.manifest.version,
       },
@@ -584,7 +584,7 @@ export class SettingTab extends PluginSettingTab {
     const debugButton = debugDiv.createEl("button")
     debugButton.setText($("setting.support.debug_copy"))
     debugButton.onclick = async () => {
-      await window.navigator.clipboard.writeText(this.getDebugInfo())
+      await navigator.clipboard.writeText(this.getDebugInfo())
       showSyncNotice($("setting.support.debug_desc"))
     }
 
@@ -592,7 +592,7 @@ export class SettingTab extends PluginSettingTab {
       const issueButton = debugDiv.createEl("button")
       issueButton.setText($("setting.support.issue"))
       issueButton.onclick = async () => {
-        await window.navigator.clipboard.writeText(this.getDebugInfo())
+        await navigator.clipboard.writeText(this.getDebugInfo())
         new ConfirmModal(
           this.app,
           $("ui.title.notice"),

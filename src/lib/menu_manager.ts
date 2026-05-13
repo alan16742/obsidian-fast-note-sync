@@ -394,11 +394,11 @@ export class MenuManager {
     const ribbonShow = (this.plugin.settings.showUpgradeBadge && hasNew) ? "block" : "none";
 
     if (this.badgeEl) {
-      this.badgeEl.style.display = ribbonShow;
+      this.badgeEl.toggleClass("fns-hidden", ribbonShow === "none");
     }
     // 同步更新 view-actions 状态图标上的红点 / Sync badge on view-actions status icon
     document.querySelectorAll('.fns-status-action .fns-ribbon-badge').forEach((el) => {
-      (el as HTMLElement).style.display = ribbonShow;
+      (el as HTMLElement).toggleClass("fns-hidden", ribbonShow === "none");
     });
   }
 
@@ -409,16 +409,15 @@ export class MenuManager {
       this.statusBarProgressBar = this.statusBarItem.createDiv("fast-note-sync-progress-bar");
       this.statusBarFill = this.statusBarProgressBar.createDiv("fast-note-sync-progress-fill");
 
-      this.statusBarCheck = this.statusBarItem.createSpan("fast-note-sync-progress-check");
+      this.statusBarCheck = this.statusBarItem.createSpan("fast-note-sync-progress-check fns-status-bar-check");
       setIcon(this.statusBarCheck, "check");
-      this.statusBarCheck.style.display = "none";
 
       this.statusBarText = this.statusBarItem.createDiv("fast-note-sync-progress-text");
     }
 
     if (current !== undefined && total !== undefined && total > 0) {
-      this.statusBarItem.style.display = "flex";
-      this.statusBarProgressBar.style.display = "block";
+      this.statusBarItem.addClass("fns-status-bar-progress");
+      this.statusBarProgressBar.removeClass("fns-hidden");
 
       let percentage = Math.min(100, Math.round((current / total) * 100));
 
@@ -429,29 +428,29 @@ export class MenuManager {
         this.plugin.lastStatusBarPercentage = percentage;
       }
 
-      this.statusBarFill.style.width = `${percentage}%`;
+      this.statusBarFill.style.width = `${percentage}%`; // 百分比宽度保留内联
       this.statusBarText.setText(`${percentage}%`);
       this.statusBarItem.setAttribute("aria-label", text);
 
       if (percentage === 100) {
-        this.statusBarProgressBar.style.display = "none";
-        this.statusBarCheck.style.display = "block";
+        this.statusBarProgressBar.addClass("fns-hidden");
+        this.statusBarCheck.removeClass("fns-hidden");
       } else {
-        this.statusBarProgressBar.style.display = "block";
-        this.statusBarCheck.style.display = "none";
+        this.statusBarProgressBar.removeClass("fns-hidden");
+        this.statusBarCheck.addClass("fns-hidden");
       }
     } else {
       if (text) {
-        this.statusBarItem.style.display = "flex";
-        this.statusBarProgressBar.style.display = "none";
+        this.statusBarItem.addClass("fns-status-bar-progress");
+        this.statusBarProgressBar.addClass("fns-hidden");
         if (text === $("ui.status.completed")) {
-          this.statusBarCheck.style.display = "block";
+          this.statusBarCheck.removeClass("fns-hidden");
         } else {
-          this.statusBarCheck.style.display = "none";
+          this.statusBarCheck.addClass("fns-hidden");
         }
         this.statusBarText.setText(text);
       } else {
-        this.statusBarItem.style.display = "none";
+        this.statusBarItem.removeClass("fns-status-bar-progress");
         this.statusBarText.setText("");
       }
     }
@@ -468,11 +467,11 @@ export class MenuManager {
     const isShow = this.plugin.settings.showConcurrencyIndicator;
     
     if (isEnabled && isShow) {
-        this.concurrencyStatusBarItem.style.display = "inline-flex";
+        this.concurrencyStatusBarItem.addClass("fns-status-bar-item");
         const limit = this.plugin.settings.maxConcurrentUploads;
         this.concurrencyStatusBarItem.setAttribute("aria-label", $("setting.sync.concurrency_limit_tip", { count: limit }));
     } else {
-        this.concurrencyStatusBarItem.style.display = "none";
+        this.concurrencyStatusBarItem.removeClass("fns-status-bar-item");
     }
   }
 
@@ -653,14 +652,8 @@ export class MenuManager {
           const itemDom = (item as any).dom as HTMLElement;
           const titleEl = itemDom.querySelector(".menu-item-title");
           if (titleEl) {
-            const iconSpan = titleEl.createSpan({ cls: "fast-note-sync-update-icon" });
+            const iconSpan = titleEl.createSpan({ cls: "fast-note-sync-update-icon fns-update-icon" });
             setIcon(iconSpan, "circle-arrow-up");
-            iconSpan.style.color = "var(--text-success)";
-            iconSpan.style.marginLeft = "4px";
-            iconSpan.style.width = "14px";
-            iconSpan.style.height = "14px";
-            iconSpan.style.display = "inline-flex";
-            iconSpan.style.verticalAlign = "top";
 
             // Add red dot after text (文字后面右上红点)
             titleEl.createSpan({ cls: "fns-menu-badge" });
@@ -692,14 +685,8 @@ export class MenuManager {
           const itemDom = (item as any).dom as HTMLElement;
           const titleEl = itemDom.querySelector(".menu-item-title");
           if (titleEl) {
-            const iconSpan = titleEl.createSpan({ cls: "fast-note-sync-update-icon" });
+            const iconSpan = titleEl.createSpan({ cls: "fast-note-sync-update-icon fns-update-icon fns-update-icon-sm" });
             setIcon(iconSpan, "circle-arrow-up");
-            iconSpan.style.color = "var(--text-success)";
-            iconSpan.style.marginLeft = "4px";
-            iconSpan.style.width = "12px";
-            iconSpan.style.height = "12px";
-            iconSpan.style.display = "inline-flex";
-            iconSpan.style.verticalAlign = "top";
 
             // Add red dot after text (文字后面右上红点)
             titleEl.createSpan({ cls: "fns-menu-badge" });
@@ -732,7 +719,7 @@ export class MenuManager {
 
     const svg = this.shareStatusBarItem.querySelector("svg");
     if (svg) {
-      svg.style.color = isShared ? "#4caf50" : "";
+      svg.toggleClass("fns-success-text", !!isShared);
     }
   }
 }

@@ -171,13 +171,11 @@ export class WebSocketClient {
         }
         this.Send("Authorization", this.plugin.settings.apiToken)
         dump("Service authorization")
-        this.OnlineStatusCheck()
       }
       this.ws.onclose = (e) => {
         this.isAuth = false
         this.isOpen = false
         this.notifyStatusChange(false)
-        window.clearInterval(this.checkConnection)
 
         dump("Service close details:", {
           timestamp: moment().format("YYYY-MM-DD HH:mm:ss.SSS"),
@@ -362,7 +360,6 @@ export class WebSocketClient {
   }
 
   public unRegister(setUnregistered: boolean = false) {
-    window.clearInterval(this.checkConnection)
     window.clearTimeout(this.checkReConnectTimeout)
     this.timeConnect = 0
     this.isOpen = false
@@ -483,16 +480,7 @@ export class WebSocketClient {
     startupSync(this.plugin)
   }
 
-  public OnlineStatusCheck() {
-    // 检查 WebSocket 连接是否打开
-    this.checkConnection = window.setInterval(() => {
-      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-        this.isOpen = true
-      } else {
-        this.isOpen = false
-      }
-    }, CONNECTION_CHECK_INTERVAL)
-  }
+
 
 
 

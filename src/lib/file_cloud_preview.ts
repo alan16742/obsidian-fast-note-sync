@@ -175,8 +175,7 @@ export class FileCloudPreview {
       }
 
       // 修复双滚动条问题：确保 embed 容器本身不滚动，并消除底部空白
-      embed.style.overflow = "hidden";
-      embed.style.verticalAlign = "middle";
+      embed.addClass("fns-overflow-hidden", "fns-v-align-middle");
 
       embed.appendChild(previewElement);
 
@@ -265,19 +264,17 @@ export class FileCloudPreview {
     if (Platform.isDesktopApp) {
       const iframe = document.createElement("iframe");
       iframe.src = cloudUrl;
-      iframe.style.cssText =
-        "width: 100%; height: 100%; border: none; display: block;";
+      iframe.addClass("fns-iframe-full");
       return iframe;
     }
 
     // --- 1. DOM Structure (Matching Obsidian's Internal Structure) ---
     const loadingContainer = document.createElement("div"); // The root wrapper we return
-    loadingContainer.addClass("pdf-preview-wrapper");
-    loadingContainer.style.cssText = `width: 100%; height: ${height}px; display: flex; flex-direction: column; background-color: var(--background-secondary); border-radius: 4px; overflow: hidden; position: relative;`;
+    loadingContainer.addClass("pdf-preview-wrapper", "fns-pdf-preview-wrapper");
+    loadingContainer.style.height = `${height}px`; // 动态高度保留内联，其余迁移
 
     // Create PDF Main Container
-    const pdfContainer = loadingContainer.createDiv("pdf-container");
-    pdfContainer.style.cssText = "display: flex; flex-direction: column; flex: 1; overflow: hidden; position: relative; background-color: var(--background-primary);"; // Ensure it takes space
+    const pdfContainer = loadingContainer.createDiv("pdf-container fns-pdf-container");
 
     // Check Theme (Simulated)
     const isThemed = this.plugin.app.loadLocalStorage("pdfjs-is-themed");
@@ -286,53 +283,45 @@ export class FileCloudPreview {
     }
 
     // Create Content Container1
-    const contentEl = pdfContainer.createDiv("pdf-content-container");
-    contentEl.style.cssText = "display: flex; flex: 1; overflow: hidden; position: relative;";
+    const contentEl = pdfContainer.createDiv("pdf-content-container fns-pdf-content-container");
 
     // Create Sidebar Container
-    const sidebarContainer = contentEl.createDiv("pdf-sidebar-container");
-    sidebarContainer.style.cssText = "width: 200px; display: none; flex-direction: column; border-right: 1px solid var(--background-modifier-border); background-color: var(--background-secondary); z-index: 1;"; // Hidden by default
+    const sidebarContainer = contentEl.createDiv("pdf-sidebar-container fns-pdf-sidebar-container fns-hidden");
     sidebarContainer.setAttribute("data-view", "thumbnail"); // Default view
 
-    const sidebarContentWrapper = sidebarContainer.createDiv("pdf-sidebar-content-wrapper");
-    sidebarContentWrapper.style.cssText = "flex: 1; overflow-y: auto; overflow-x: hidden;";
+    const sidebarContentWrapper = sidebarContainer.createDiv("pdf-sidebar-content-wrapper fns-pdf-sidebar-content-wrapper");
     const sidebarContent = sidebarContentWrapper.createDiv("pdf-sidebar-content");
 
     const thumbnailViewEl = sidebarContent.createDiv("pdf-thumbnail-view");
     const outlineViewEl = sidebarContent.createDiv("pdf-outline-view hidden"); // hidden class usually means display: none
 
     // Create Viewer Container
-    const viewerContainer = contentEl.createDiv("pdf-viewer-container");
-    viewerContainer.style.cssText = "flex: 1; overflow: auto; position: relative; display: flex; flex-direction: column; flex-start: center; padding: 20px;";
+    const viewerContainer = contentEl.createDiv("pdf-viewer-container fns-pdf-viewer-container");
 
     // Viewer Element (Where canvases go)
-    const viewerEl = viewerContainer.createDiv("pdfViewer");
-    viewerEl.style.cssText = "position: relative; width: max-content; min-height: 100%; display: flex; flex-direction: column; gap: 10px;";
+    const viewerEl = viewerContainer.createDiv("pdfViewer fns-pdf-viewer");
 
     // Event Bus
     const eventBus = new SimpleEventBus();
 
     // --- 2. Toolbar Implementation (Inline for now) ---
     // Toolbar is attached to loadingContainer (root) in Obsidian's code
-    const toolbar = loadingContainer.createDiv({ cls: "pdf-toolbar", prepend: true }); // Prepend to be at top
-    toolbar.style.cssText = "display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--background-modifier-border); padding: 4px; background-color: var(--background-secondary); flex-shrink: 0;";
+    const toolbar = loadingContainer.createDiv({ cls: "pdf-toolbar fns-pdf-toolbar", prepend: true }); // Prepend to be at top
 
     // Toolbar Left
-    const toolbarLeft = toolbar.createDiv({ cls: "pdf-toolbar-left" });
-    toolbarLeft.style.cssText = "display: flex; align-items: center; gap: 4px;";
+    const toolbarLeft = toolbar.createDiv({ cls: "pdf-toolbar-left fns-pdf-toolbar-left" });
 
     const sidebarToggle = toolbarLeft.createDiv({ cls: "clickable-icon", attr: { "aria-label": "Toggle Sidebar" } });
     setIcon(sidebarToggle, "layout-list");
     sidebarToggle.onclick = () => {
-      const isHidden = sidebarContainer.style.display === "none";
-      sidebarContainer.style.display = isHidden ? "flex" : "none";
+      const isHidden = sidebarContainer.hasClass("fns-hidden");
+      sidebarContainer.toggleClass("fns-hidden", !isHidden);
       sidebarToggle.toggleClass("is-active", !isHidden); // Optional visual feedback
       eventBus.dispatch("sidebarviewchanged", { view: "thumbnail" });
     };
 
     // Spacer
-    const spacer1 = toolbarLeft.createDiv({ cls: "pdf-toolbar-spacer" });
-    spacer1.style.flex = "1";
+    const spacer1 = toolbarLeft.createDiv({ cls: "pdf-toolbar-spacer fns-flex-1" });
 
     // Zoom Controls
     const zoomOutBtn = toolbarLeft.createDiv({ cls: "clickable-icon", attr: { "aria-label": "Zoom Out" } });
@@ -344,14 +333,12 @@ export class FileCloudPreview {
     zoomInBtn.onclick = () => eventBus.dispatch("zoomin");
 
     // Page Input
-    const pageInput = toolbarLeft.createEl("input", { type: "number", cls: "pdf-page-input" });
-    pageInput.style.cssText = "width: 40px; text-align: right; border: none; background: transparent; color: var(--text-normal); margin-left: 8px;";
+    const pageInput = toolbarLeft.createEl("input", { type: "number", cls: "pdf-page-input fns-pdf-page-input" });
     pageInput.value = "1";
     pageInput.min = "1";
 
-    const pageCountEl = toolbarLeft.createSpan({ cls: "pdf-page-numbers" });
+    const pageCountEl = toolbarLeft.createSpan({ cls: "pdf-page-numbers fns-muted-text" });
     pageCountEl.setText(" / --");
-    pageCountEl.style.color = "var(--text-muted)";
 
     pageInput.onchange = () => {
       const page = parseInt(pageInput.value);
@@ -372,9 +359,8 @@ export class FileCloudPreview {
     let isRendering = false;
 
     // Loading Indicator
-    const loadingText = viewerContainer.createDiv({ cls: "pdf-loading" });
+    const loadingText = viewerContainer.createDiv({ cls: "pdf-loading fns-pdf-loading" });
     loadingText.setText("Loading PDF...");
-    loadingText.style.cssText = "position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: var(--text-muted);";
 
     const renderPages = async () => {
       if (!pdfDoc || isRendering) return;
@@ -386,9 +372,8 @@ export class FileCloudPreview {
           const page = await pdfDoc.getPage(pageNum);
           const viewport = page.getViewport({ scale: currentScale });
 
-          const pageContainer = viewerEl.createDiv({ cls: "pdf-page-wrapper" });
+          const pageContainer = viewerEl.createDiv({ cls: "pdf-page-wrapper fns-pdf-page-wrapper" });
           pageContainer.setAttribute("data-page-number", pageNum.toString());
-          pageContainer.style.cssText = "position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 10px; background-color: var(--background-primary);";
           pageContainer.style.width = `${viewport.width}px`;
           pageContainer.style.height = `${viewport.height}px`;
 
@@ -490,14 +475,13 @@ export class FileCloudPreview {
         // Render Thumbnails (Lazy or simple)
         // For now, simple implementation if sidebar is opened
         eventBus.on("sidebarviewchanged", async () => {
-          if (sidebarContainer.style.display !== "none" && thumbnailViewEl.children.length === 0) {
+          if (!sidebarContainer.hasClass("fns-hidden") && thumbnailViewEl.children.length === 0) {
             // Render thumbnails
             for (let i = 1; i <= pdfDoc.numPages; i++) {
               const page = await pdfDoc.getPage(i);
               const viewport = page.getViewport({ scale: 0.2 });
 
-              const thumbContainer = thumbnailViewEl.createDiv("pdf-thumbnail");
-              thumbContainer.style.cssText = "margin-bottom: 10px; cursor: pointer; display: flex; justify-content: center;";
+              const thumbContainer = thumbnailViewEl.createDiv("pdf-thumbnail fns-pdf-thumbnail");
               thumbContainer.onclick = () => eventBus.dispatch("pagechange", { pageNumber: i });
 
               const canvas = thumbContainer.createEl("canvas");

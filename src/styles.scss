@@ -2461,3 +2461,171 @@
 
 .fns-hidden { display: none !important; }
 .fns-white-text { color: white !important; }
+
+/* --- PDF Preview & Status Bar Refactor --- */
+
+.fns-pdf-preview-wrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--background-secondary);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.fns-pdf-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  background-color: var(--background-primary);
+}
+
+.fns-pdf-content-container {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.fns-pdf-sidebar-container {
+  width: 200px;
+  display: none;
+  flex-direction: column;
+  border-right: 1px solid var(--background-modifier-border);
+  background-color: var(--background-secondary);
+  z-index: 1;
+}
+
+.fns-pdf-sidebar-content-wrapper {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.fns-pdf-viewer-container {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+}
+
+.fns-pdf-viewer {
+  position: relative;
+  width: max-content;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fns-pdf-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding: 4px;
+  background-color: var(--background-secondary);
+  flex-shrink: 0;
+}
+
+.fns-pdf-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.fns-pdf-page-input {
+  width: 40px;
+  text-align: right;
+  border: none;
+  background: transparent;
+  color: var(--text-normal);
+  margin-left: 8px;
+}
+
+.fns-pdf-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--text-muted);
+}
+
+.fns-pdf-page-wrapper {
+  position: relative;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  margin-bottom: 10px;
+  background-color: var(--background-primary);
+}
+
+.fns-pdf-thumbnail {
+  margin-bottom: 10px;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+}
+
+/* Status Bar & Ribbon */
+.fns-status-bar-check { display: none; }
+.fns-status-bar-progress { display: flex; }
+.fns-status-bar-item { display: flex; align-items: center; }
+
+.fns-update-icon {
+  color: var(--text-success);
+  margin-left: 4px;
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  vertical-align: top;
+}
+
+.fns-update-icon-sm {
+  width: 12px;
+  height: 12px;
+}
+
+.fns-iframe-full {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}
+
+
+.fns-overflow-hidden { overflow: hidden; }
+.fns-v-align-middle { vertical-align: middle; }
+
+/* Share Indicator (Data Attribute based) */
+.nav-file-title[data-fns-shared="true"] .nav-file-title-content::before,
+.nav-folder-title[data-fns-shared="true"] .nav-folder-title-content::before,
+[data-drag-path][data-fns-shared="true"] .nn-navitem-name::before,
+[data-drag-path][data-fns-shared="true"] .nn-file-name::before {
+  content: '';
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='12' height='12' fill='none' stroke='%234caf50' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='18' cy='5' r='3'/%3E%3Ccircle cx='6' cy='12' r='3'/%3E%3Ccircle cx='18' cy='19' r='3'/%3E%3Cline x1='8.59' y1='13.51' x2='15.42' y2='17.49'/%3E%3Cline x1='15.41' y1='6.51' x2='8.59' y2='10.49'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  margin-right: 4px;
+  vertical-align: middle;
+  opacity: 0.85;
+}
+
+/* Filter styles (moved from dynamic injection) */
+.fns-filter-active .nav-file:not(:has(.nav-file-title[data-fns-shared="true"])) {
+  display: none !important;
+}
+.fns-filter-active .nav-folder:not(.mod-root):not(:has([data-fns-shared="true"])) {
+  display: none !important;
+}
+
+.fns-preview-toast {
+  top: var(--fns-toast-top-preview, 110px) !important;
+}

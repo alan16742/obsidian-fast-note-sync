@@ -161,20 +161,34 @@ export class LocalStorageManager {
         // 加载持久化的哈希和时间戳状态
         this.loadState();
 
-        this.watchTimer = window.setInterval(() => {
+        // 1. 注册工作区布局就绪事件 (Check on layout ready)
+        this.plugin.app.workspace.onLayoutReady(() => {
             this.checkChanges();
-        }, 4000);
+        });
+
+        // 2. 注册活动笔记切换事件 (Check when switching notes)
+        this.plugin.registerEvent(
+            this.plugin.app.workspace.on("active-leaf-change", () => {
+                this.checkChanges();
+            })
+        );
+
+        // 3. 监听跨窗口/标签页的 localStorage 变更 (Listen for cross-tab changes)
+        window.addEventListener("storage", (e) => {
+            if (e.key && this.getKeys().includes(e.key)) {
+                this.checkChanges();
+            }
+        });
+        
+        // 标记为已启动 (Reuse watchTimer as a boolean flag)
+        this.watchTimer = 1;
     }
 
     /**
-     * 停止定时检查
+     * 停止定时检查 (Cleanup handled by plugin.registerEvent)
      */
     stopWatch() {
-        if (this.watchTimer) {
-            dump("[LocalStorageManager] Stopping watch.");
-            window.clearInterval(this.watchTimer);
-            this.watchTimer = null;
-        }
+        this.watchTimer = null;
     }
 
     /**
