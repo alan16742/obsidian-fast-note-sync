@@ -428,7 +428,9 @@ export class MenuManager {
         this.plugin.lastStatusBarPercentage = percentage;
       }
 
-      this.statusBarFill.style.width = `${percentage}%`; // 百分比宽度保留内联
+      // Use setCssProps for dynamic progress bar width
+      // 使用 setCssProps 设置动态进度条宽度
+      this.statusBarFill.setCssProps({ width: `${percentage}%` });
       this.statusBarText.setText(`${percentage}%`);
       this.statusBarItem.setAttribute("aria-label", text);
 

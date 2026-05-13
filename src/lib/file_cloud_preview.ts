@@ -271,7 +271,9 @@ export class FileCloudPreview {
     // --- 1. DOM Structure (Matching Obsidian's Internal Structure) ---
     const loadingContainer = document.createElement("div"); // The root wrapper we return
     loadingContainer.addClass("pdf-preview-wrapper", "fns-pdf-preview-wrapper");
-    loadingContainer.style.height = `${height}px`; // 动态高度保留内联，其余迁移
+    // Use setCssProps for dynamic height (PDF viewer container)
+    // 使用 setCssProps 设置 PDF 预览容器动态高度
+    loadingContainer.setCssProps({ height: `${height}px` });
 
     // Create PDF Main Container
     const pdfContainer = loadingContainer.createDiv("pdf-container fns-pdf-container");
@@ -374,15 +376,17 @@ export class FileCloudPreview {
 
           const pageContainer = viewerEl.createDiv({ cls: "pdf-page-wrapper fns-pdf-page-wrapper" });
           pageContainer.setAttribute("data-page-number", pageNum.toString());
-          pageContainer.style.width = `${viewport.width}px`;
-          pageContainer.style.height = `${viewport.height}px`;
+          // Use setCssProps for dynamic page dimensions
+          // 使用 setCssProps 设置 PDF 页面动态尺寸
+          pageContainer.setCssProps({ width: `${viewport.width}px`, height: `${viewport.height}px` });
 
           const canvas = pageContainer.createEl("canvas");
           const context = canvas.getContext("2d");
           canvas.height = viewport.height;
           canvas.width = viewport.width;
-          canvas.style.width = "100%";
-          canvas.style.height = "100%";
+          // Use setCssProps instead of direct style assignment for theme compatibility
+          // 使用 setCssProps 替代直接内联样式赋值，以提升主题兼容性
+          canvas.setCssProps({ width: "100%", height: "100%" });
 
           const renderContext = {
             canvasContext: context,

@@ -83,11 +83,13 @@ export class RuleEditor {
         const updateHeight = (el: HTMLTextAreaElement, forceExpand: boolean) => {
           if (forceExpand && (el.scrollWidth > el.clientWidth || el.scrollHeight > 32)) {
             el.setAttr("wrap", "soft");
-            el.style.height = 'auto';
-            el.style.height = el.scrollHeight + 'px';
+            // Use setCssProps for dynamic height calculation (theme-compatible)
+            // 使用 setCssProps 动态设置高度（主题兼容）
+            el.setCssProps({ height: "auto" });
+            el.setCssProps({ height: `${el.scrollHeight}px` });
           } else {
             el.setAttr("wrap", "off");
-            el.style.height = ""; // 清除内联高度，允许类名生效
+            el.setCssProps({ height: "" }); // 清除内联高度，允许类名生效 / Clear inline height to allow CSS class to take effect
             el.addClass("fns-rule-textarea-base");
           }
         };
