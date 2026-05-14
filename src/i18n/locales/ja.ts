@@ -331,6 +331,7 @@ export default {
   "ui.log.action.SyncEnd_incremental": "同期大項目完了（増分）",
   "ui.log.action.SettingClear": "リモート設定のクリア",
   "ui.log.action.SettingSyncClear": "同期リモート設定のクリア",
+  "ui.log.action.ShareSyncRefresh": "共有状態のリフレッシュ",
 
   // --- ui.button ---
   "ui.button.confirm": "確認",

@@ -331,6 +331,7 @@ export default {
   "ui.log.action.SyncEnd_incremental": "동기화 항목 완료(증분)",
   "ui.log.action.SettingClear": "원격 설정 정리",
   "ui.log.action.SettingSyncClear": "원격 설정 동기화 정리",
+  "ui.log.action.ShareSyncRefresh": "공유 상태 새로고침",
 
   // --- ui.button ---
   "ui.button.confirm": "확인",

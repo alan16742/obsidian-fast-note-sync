@@ -331,6 +331,7 @@ export default {
   "ui.log.action.SyncEnd_incremental": "Sync major item ended (incremental)",
   "ui.log.action.SettingClear": "Clear remote configuration",
   "ui.log.action.SettingSyncClear": "Sync clear remote configuration",
+  "ui.log.action.ShareSyncRefresh": "Share status refresh",
 
   // --- ui.button ---
   "ui.button.confirm": "Confirm",
