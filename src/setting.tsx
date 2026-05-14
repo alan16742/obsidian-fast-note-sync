@@ -1,8 +1,8 @@
 import { App, PluginSettingTab, Setting, Platform, SearchComponent, MarkdownRenderer, Component } from "obsidian";
 import { createRoot, Root } from "react-dom/client";
 
-import { parseRules, SyncRule, getPluginDir, debounce, showSyncNotice } from "./lib/helps";
 import { handleSync, resetSettingSyncTime, rebuildAllHashes, clearAllHashes } from "./lib/operator";
+import { parseRules, SyncRule, getPluginDir, debounce, showSyncNotice } from "./lib/helps";
 import { SettingsView, SupportView } from "./views/settings-view";
 import { RuleEditorModal } from "./views/rule-editor-modal";
 import { ConfirmModal } from "./views/confirm-modal";
@@ -533,11 +533,11 @@ export class SettingTab extends PluginSettingTab {
           serverConnectionStatus: this.plugin.websocket.isConnected() ? "connected" : "disconnected",
           ...(this.plugin.websocket.isConnected()
             ? {
-                serverVersion: this.plugin.localStorageManager.getMetadata("serverVersion"),
-              }
+              serverVersion: this.plugin.localStorageManager.getMetadata("serverVersion"),
+            }
             : {
-                serverLastConnectVersion: this.plugin.localStorageManager.getMetadata("serverVersion"),
-              }),
+              serverLastConnectVersion: this.plugin.localStorageManager.getMetadata("serverVersion"),
+            }),
 
           serverVersionIsNew: this.plugin.localStorageManager.getMetadata("serverVersionIsNew"),
           pluginVersionIsNew: this.plugin.localStorageManager.getMetadata("pluginVersionIsNew"),
@@ -552,17 +552,17 @@ export class SettingTab extends PluginSettingTab {
           versions:
             typeof process !== "undefined"
               ? {
-                  node: process.versions.node,
-                  electron: process.versions.electron,
-                  chrome: process.versions.chrome,
-                  v8: process.versions.v8,
-                }
+                node: process.versions.node,
+                electron: process.versions.electron,
+                chrome: process.versions.chrome,
+                v8: process.versions.v8,
+              }
               : {},
           capacitor: (window as unknown as { Capacitor: unknown }).Capacitor
             ? {
-                platform: (window as any).Capacitor.getPlatform(),
-                isNative: (window as any).Capacitor.isNative,
-              }
+              platform: (window as any).Capacitor.getPlatform(),
+              isNative: (window as any).Capacitor.isNative,
+            }
             : "not found",
           obsidianVersion: (this.app as unknown as { version: string }).version || "unknown",
         },
@@ -844,9 +844,9 @@ export class SettingTab extends PluginSettingTab {
         if (value != this.plugin.settings.showUpgradeBadge) {
           this.plugin.settings.showUpgradeBadge = value
           await (this.plugin as any).saveSettings()
-          (this.plugin.menuManager as any)?.refreshUpgradeBadge()
-          // 触发设置变更事件以通知 React 视图 / Trigger settings change event to notify React views
-          (this.app.workspace as unknown as { trigger: (name: string) => void }).trigger("fns:settings-change")
+            (this.plugin.menuManager as any)?.refreshUpgradeBadge()
+            // 触发设置变更事件以通知 React 视图 / Trigger settings change event to notify React views
+            (this.app.workspace as unknown as { trigger: (name: string) => void }).trigger("fns:settings-change")
         }
       }),
     )
@@ -949,7 +949,7 @@ export class SettingTab extends PluginSettingTab {
           await (this.plugin as any).saveSettings()
         }),
     )
-    this.setDescWithBreaks(set.lastElementChild as HTMLElement, $("setting.remote.vault_name"))
+    this.setDescWithBreaks(set.lastElementChild as HTMLElement, $("setting.remote.vault_name_desc"))
 
     new Setting(set).setName($("setting.remote.auto_redirect")).setClass("fns-setting-item-checkbox").addToggle((toggle) =>
       toggle.setValue(this.plugin.settings.autoRedirectEnabled).onChange(async (value) => {

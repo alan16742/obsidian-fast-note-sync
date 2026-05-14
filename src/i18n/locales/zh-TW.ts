@@ -331,7 +331,7 @@ export default {
   "ui.log.action.SyncEnd_incremental": "同步大項結束 (增量)",
   "ui.log.action.SettingClear": "清理遠端配置",
   "ui.log.action.SettingSyncClear": "同步清理遠端配置",
-  "ui.log.action.ShareSyncRefresh": "分享狀態重新整理",
+  "ui.log.action.ShareSyncRefresh": "分享狀態刷新",
 
   // --- ui.button ---
   "ui.button.confirm": "確認",

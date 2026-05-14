@@ -368,5 +368,6 @@
   "setting.general.mobile_toast_top_test": "db06c78d1e24cf708a14ce81c9b617ec",
   "setting.sync.binary_limit": "e1bf4d02a4e8921e17e1977c61af29b2",
   "setting.sync.binary_limit_desc": "e39f7fd7aa4120b6bec6abbeb699eaa8",
-  "ui.share.not_shared_yet": "bc4c2a86d927d333f7715696ab931393"
+  "ui.share.not_shared_yet": "bc4c2a86d927d333f7715696ab931393",
+  "ui.log.action.ShareSyncRefresh": "35f7f6a608e4d80159acae6c1725cbff"
 }
