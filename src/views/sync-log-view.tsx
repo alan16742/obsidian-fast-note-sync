@@ -353,16 +353,14 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
                         <div key={log.id} className={`fns-sync-log-item fns-sync-log-category-${log.category} fns-sync-log-status-${log.status} fns-sync-log-type-${log.type}`}>
                             <div className="fns-sync-log-item-header">
                                 <span className="fns-sync-log-time">{moment(log.timestamp).format("HH:mm:ss")}</span>
-                                {/* eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any */}
-                                <span className="fns-sync-log-action">{$(`ui.log.action.${log.action}` as any)}</span>
+                                <span className="fns-sync-log-action">{$(`ui.log.action.${log.action}` as Parameters<typeof $>[0])}</span>
                                 <span className="fns-sync-log-type-tag">
                                     {log.type === 'send' ? (
                                         <svg viewBox="0 0 24 24" width="10" height="10" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
                                     ) : log.type === 'receive' ? (
                                         <svg viewBox="0 0 24 24" width="10" height="10" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12l7 7 7-7" /></svg>
                                     ) : null}
-                                    {/* eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any */}
-                                    {$(`ui.log.type_${log.type}` as any)}
+                                    {$(`ui.log.type_${log.type}`)}
                                 </span>
                                 <div className="fns-sync-log-header-right">
                                     {log.progress !== undefined && (log.status === 'pending' || (log.status === 'success' && log.progress === 100)) && (

@@ -159,9 +159,7 @@ export class PathSuggest extends AbstractInputSuggest<string> {
       return;
     }
 
-    // @ts-ignore
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    super.onKeyDown(event);
+    (Object.getPrototypeOf(PathSuggest.prototype) as { onKeyDown: (e: KeyboardEvent) => void }).onKeyDown.call(this, event);
 
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       window.setTimeout(() => {

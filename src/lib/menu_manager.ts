@@ -179,8 +179,6 @@ export class MenuManager {
       callback: () => {
         void this.plugin.activateLogView()
       },
-      // eslint-disable-next-line obsidianmd/commands/no-default-hotkeys
-      hotkeys: [{ modifiers: ["Ctrl", "Shift"], key: "Q" }]
     })
 
     this.plugin.addCommand({
@@ -189,8 +187,6 @@ export class MenuManager {
       callback: () => {
         this.showRibbonMenu()
       },
-      // eslint-disable-next-line obsidianmd/commands/no-default-hotkeys
-      hotkeys: [{ modifiers: ["Ctrl", "Shift"], key: "W" }]
     })
 
     this.plugin.addCommand({
@@ -203,8 +199,6 @@ export class MenuManager {
           app.setting.openTabById(this.plugin.manifest.id);
         }
       },
-      // eslint-disable-next-line obsidianmd/commands/no-default-hotkeys
-      hotkeys: [{ modifiers: ["Ctrl", "Shift"], key: "E" }]
     })
   }
 

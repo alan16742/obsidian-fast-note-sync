@@ -100,18 +100,17 @@ export class FileCloudPreview {
    */
   private registerLivePreviewProcessor() {
     if (!this.plugin.settings.cloudPreviewEnabled) return;
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
-    const pluginInstance = this;
+    const handleUpdate = (view: EditorView) => this.handleLivePreviewUpdate(view);
     this.plugin.registerEditorExtension([
       ViewPlugin.fromClass(class {
         constructor(view: EditorView) {
           // 初始加载时也尝试处理一次，解决单行笔记或初次打开不触发 update 的问题
-          pluginInstance.handleLivePreviewUpdate(view);
+          handleUpdate(view);
         }
         update(update: ViewUpdate) {
           // 只要文档变化、视口变化或插件状态变化，都尝试更新
           if (update.docChanged || update.viewportChanged || update.geometryChanged) {
-            pluginInstance.handleLivePreviewUpdate(update.view);
+            handleUpdate(update.view);
           }
         }
       })
