@@ -232,6 +232,7 @@ export class WebSocketClient {
 
         if (NON_RECONNECT_REASONS.has(e.reason)) {
           showSyncNotice("Remote Service Connection Closed: " + e.reason)
+          this.isRegister = false
         }
 
         // Only reconnect if we differ intended to be registered
