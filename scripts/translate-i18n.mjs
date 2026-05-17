@@ -8,11 +8,31 @@ import fs from "node:fs";
  * i18n Translation Script using OpenAI API
  * 批次原子同步模式：
  * 1. 字典 (.translate-dict.json) 记录 zh-CN 的 Key -> 内容 MD5。
- * 2. 只有当一个 Batch (40条) 在所有目标语言中都翻译成功后，才更新字典。
+ * 2. 只有当一个 Batch (70条) 在所有目标语言中都翻译成功后，才更新字典。
  * 3. 这保证了跨语言间的高度同步性。
  *
- * Usage:
- *   OPENAI_API_KEY=sk-xxx node scripts/translate-i18n.mjs
+ * Usage / 用法:
+ *   node scripts/translate-i18n.mjs [options]
+ *
+ * Options / 选项:
+ *   --model <model_name>   指定使用的模型 (默认: qwen3.5-27b)
+ *   --lang <lang_code>     指定要翻译的目标语言，多个语言用逗号分隔 (例如: --lang en,ja)
+ *   --force                强制重新翻译所有内容，忽略字典缓存
+ *
+ * Environment Variables / 环境变量:
+ *   可以在根目录下的 .env 文件中配置，或直接在命令行传入:
+ *   OPENAI_API_KEY         (必填) API 密钥
+ *   OPENAI_BASE_URL        (可选) API 基础路径 (默认: https://www.dmxapi.cn/v1)
+ *
+ * Examples / 示例:
+ *   # 默认翻译所有变更 (依赖 .env 中的环境变量)
+ *   node scripts/translate-i18n.mjs
+ *   
+ *   # 强制重新翻译英文和日文
+ *   node scripts/translate-i18n.mjs --lang en,ja --force
+ *
+ *   # 使用指定的模型进行翻译
+ *   node scripts/translate-i18n.mjs --model gpt-4o
  */
 
 // ──────────────────────────── Config ────────────────────────────
@@ -178,7 +198,7 @@ async function callOpenAIStream(messages, { onToken } = {}) {
       temperature: 0.3,
       stream: true,
       messages,
-      response_format: { type: "json_object" },
+      thinking: { type: "disabled" },
     }),
   });
 
@@ -227,7 +247,7 @@ async function callOpenAI(messages) {
       model: MODEL,
       temperature: 0.3,
       messages,
-      response_format: { type: "json_object" },
+      thinking: { type: "disabled" },
     }),
   });
   if (!res.ok) {
