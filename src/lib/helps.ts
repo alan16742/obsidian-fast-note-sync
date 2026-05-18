@@ -1,6 +1,7 @@
 import { Notice, normalizePath, TFolder, Platform, App, PluginManifest } from "obsidian";
 
 import FastSync from "../main";
+import { SyncLogManager } from "./sync_log_manager";
 import { nativeFetch, vaultDelete, dump, setLogEnabled, logLevel } from "./helps_obsidian_bypass";
 
 export { nativeFetch, vaultDelete, dump, setLogEnabled, logLevel };
@@ -866,4 +867,39 @@ export function safeStringify(value: unknown): string {
     return String(value)
   }
   return ""
+}
+
+/**
+ * 检查错误是否为大小写冲突错误，如果是，则获取本地实际路径并高亮弹窗提示用户
+ * Check if the error is a case-sensitivity conflict; if so, find the actual local path and prompt the user.
+ *
+ * @param error 捕获到的错误 / The caught error
+ * @param relativePath 期望写入的文件/文件夹路径 / The expected file or folder path to write
+ * @param plugin 插件实例 / The plugin instance
+ * @param typeSync 同步的类型（如：'NoteModify' | 'FileDownload' | 'ConfigModify' | 'ConfigMtime'） / The sync type for logging
+ * @returns boolean 如果是大小写冲突且已提示用户，返回 true；否则返回 false / Returns true if a case conflict was detected and notified; otherwise false.
+ */
+export const checkAndNotifyCaseConflict = function (
+  error: unknown,
+  relativePath: string,
+  plugin: FastSync,
+  typeSync: 'NoteModify' | 'NoteMtime' | 'NoteRename' | 'FileDownload' | 'FileMtime' | 'FileRename' | 'FolderModify' | 'FolderRename' | 'ConfigModify' | 'ConfigMtime'
+): boolean {
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  
+  if (errorMessage.toLowerCase().includes("already exists")) {
+    const normalizedPath = normalizePath(relativePath);
+    const lowerPath = normalizedPath.toLowerCase();
+    const files = plugin.app.vault.getAllLoadedFiles();
+    const matchedFile = files.find(f => f.path.toLowerCase() === lowerPath);
+
+    if (matchedFile && matchedFile.path !== normalizedPath) {
+      const typeLabel = typeSync.startsWith('File') ? '附件' : typeSync.startsWith('Config') ? '配置' : typeSync.startsWith('Folder') ? '目录' : '笔记';
+      const noticeMsg = `⚠️ ${typeLabel}同步大小写冲突！\n服务端期望路径: ${normalizedPath}\n本地实际已存在: ${matchedFile.path}\n由于 Windows 不区分大小写，请手动修改名称保持一致。`;
+      showSyncNotice(noticeMsg, 15000); // 提示持续 15 秒 / Duration of 15 seconds
+      SyncLogManager.getInstance().addLog('receive', typeSync, `大小写冲突！本地实际存在：${matchedFile.path}`, 'error', relativePath);
+      return true;
+    }
+  }
+  return false;
 }

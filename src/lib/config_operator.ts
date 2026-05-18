@@ -1,6 +1,6 @@
 import { normalizePath, App } from "obsidian";
 
-import { hashContent, dump, configIsPathExcluded, getSafeCtime, isPathInConfigSyncDirs, showSyncNotice, isInWhitelist, hashFileAsync } from "./helps";
+import { hashContent, dump, configIsPathExcluded, getSafeCtime, isPathInConfigSyncDirs, showSyncNotice, isInWhitelist, hashFileAsync, checkAndNotifyCaseConflict } from "./helps";
 import { SyncLogManager } from "./sync_log_manager";
 import { ReceiveMessage, ReceiveMtimeMessage, ReceivePathMessage, SyncEndData } from "./types";
 import type FastSync from "../main";
@@ -175,7 +175,9 @@ export const receiveConfigSyncModify = async function (data: ReceiveMessage, plu
         await plugin.app.vault.adapter.write(filePath, data.content, { ...(data.ctime > 0 && { ctime: data.ctime }), ...(data.mtime > 0 && { mtime: data.mtime }) })
     } catch (e) {
         console.error("[writeConfigFile] error:", e)
-        SyncLogManager.getInstance().addLog('receive', 'ConfigModify', e instanceof Error ? e.message : String(e), 'error', data.path);
+        if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'ConfigModify')) {
+            SyncLogManager.getInstance().addLog('receive', 'ConfigModify', e instanceof Error ? e.message : String(e), 'error', data.path);
+        }
     }
 
     await configReload(data.path, plugin, false, data.content)
@@ -301,7 +303,9 @@ export const receiveConfigSyncMtime = async function (data: ReceiveMtimeMessage,
         }
     } catch (e) {
         console.error("[updateConfigFileTime] error:", e)
-        SyncLogManager.getInstance().addLog('receive', 'ConfigMtime', e instanceof Error ? e.message : String(e), 'error', data.path);
+        if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'ConfigMtime')) {
+            SyncLogManager.getInstance().addLog('receive', 'ConfigMtime', e instanceof Error ? e.message : String(e), 'error', data.path);
+        }
     }
     plugin.removeIgnoredConfigFile(data.path)
 

@@ -1,7 +1,7 @@
 import { TFile, TAbstractFile, normalizePath, Platform } from "obsidian";
 
 import { ReceiveFileSyncUpdateMessage, FileUploadMessage, FileSyncChunkDownloadMessage, FileDownloadSession, ReceiveMtimeMessage, ReceivePathMessage, SyncEndData } from "./types";
-import { hashContent, hashArrayBuffer, getPluginDir, dump, sleep, isPathExcluded, getSafeCtime, isLargeBinarySyncRisk, describeBinarySyncLimit, showSyncNotice, logMemorySnapshot, hashFileAsync, vaultDelete } from "./helps";
+import { hashContent, hashArrayBuffer, getPluginDir, dump, sleep, isPathExcluded, getSafeCtime, isLargeBinarySyncRisk, describeBinarySyncLimit, showSyncNotice, checkAndNotifyCaseConflict, logMemorySnapshot, hashFileAsync, vaultDelete } from "./helps";
 import { FileCloudPreview } from "./file_cloud_preview";
 import { SyncLogManager } from "./sync_log_manager";
 import { HttpApiService } from "./api";
@@ -747,7 +747,9 @@ export const receiveFileSyncMtime = async function (data: ReceiveMtimeMessage, p
     }
   }, { maxRetries: 5, retryInterval: 100 }).catch(e => {
     dump(`Error in receiveFileSyncMtime: ${normalizedPath}`, e);
-    SyncLogManager.getInstance().addLog('receive', 'FileMtime', e instanceof Error ? e.message : String(e), 'error', data.path);
+    if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'FileMtime')) {
+      SyncLogManager.getInstance().addLog('receive', 'FileMtime', e instanceof Error ? e.message : String(e), 'error', data.path);
+    }
   });
 
   plugin.fileSyncTasks.completed++
@@ -1059,7 +1061,9 @@ export const receiveFileSyncRename = async function (data: { oldPath: string; pa
     }
   }, { maxRetries: 10, retryInterval: 100 }).catch(e => {
     dump(`Error in receiveFileSyncRename: ${normalizedOldPath} -> ${normalizedNewPath}`, e);
-    SyncLogManager.getInstance().addLog('receive', 'FileRename', e instanceof Error ? e.message : String(e), 'error', data.path);
+    if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'FileRename')) {
+      SyncLogManager.getInstance().addLog('receive', 'FileRename', e instanceof Error ? e.message : String(e), 'error', data.path);
+    }
   });
 
   plugin.fileSyncTasks.completed++
@@ -1168,7 +1172,9 @@ const handleFileChunkDownloadComplete = async function (session: FileDownloadSes
     plugin.downloadedFilesCount++
   } catch (e) {
     dump(`Error completing file download for ${session.path}`, e)
-    SyncLogManager.getInstance().addLog('receive', 'FileDownload', e instanceof Error ? e.message : String(e), 'error', session.path);
+    if (!checkAndNotifyCaseConflict(e, session.path, plugin, 'FileDownload')) {
+      SyncLogManager.getInstance().addLog('receive', 'FileDownload', e instanceof Error ? e.message : String(e), 'error', session.path);
+    }
     const sessionSize = session.tempDir
       ? session.size
       : Array.from(session.chunks?.values() || []).reduce((sum, c) => sum + c.byteLength, 0)

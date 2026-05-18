@@ -1,7 +1,7 @@
 import { TFile, TAbstractFile, normalizePath } from "obsidian";
 
 import { ReceiveMessage, ReceiveMtimeMessage, ReceivePathMessage, SyncEndData } from "./types";
-import { hashContent, hashContentAsync, dump, isPathExcluded, getSafeCtime, vaultDelete } from "./helps";
+import { hashContent, hashContentAsync, dump, isPathExcluded, getSafeCtime, vaultDelete, checkAndNotifyCaseConflict } from "./helps";
 import { SyncLogManager } from "./sync_log_manager";
 import type FastSync from "../main";
 
@@ -256,7 +256,9 @@ export const receiveNoteSyncModify = async function (data: ReceiveMessage, plugi
     }, { maxRetries: 5, retryInterval: 100 });
   } catch (e) {
     console.error(`[FastSync] Failed to receiveNoteSyncModify: ${normalizedPath}`, e);
-    SyncLogManager.getInstance().addLog('receive', 'NoteModify', e instanceof Error ? e.message : String(e), 'error', data.path);
+    if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'NoteModify')) {
+      SyncLogManager.getInstance().addLog('receive', 'NoteModify', e instanceof Error ? e.message : String(e), 'error', data.path);
+    }
     dump(`Error in receiveNoteSyncModify: ${normalizedPath}`, e);
   } finally {
     plugin.noteSyncTasks.completed++
@@ -367,7 +369,9 @@ export const receiveNoteSyncMtime = async function (data: ReceiveMtimeMessage, p
     }, { maxRetries: 5, retryInterval: 100 });
   } catch (e) {
     console.error(`[FastSync] Failed to receiveNoteSyncMtime: ${normalizedPath}`, e);
-    SyncLogManager.getInstance().addLog('receive', 'NoteMtime', e instanceof Error ? e.message : String(e), 'error', data.path);
+    if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'NoteMtime')) {
+      SyncLogManager.getInstance().addLog('receive', 'NoteMtime', e instanceof Error ? e.message : String(e), 'error', data.path);
+    }
     dump(`Error in receiveNoteSyncMtime: ${normalizedPath}`, e);
   } finally {
     plugin.noteSyncTasks.completed++
@@ -536,7 +540,9 @@ export const receiveNoteSyncRename = async function (data: { path: string, oldPa
     }, { maxRetries: 10, retryInterval: 100 });
   } catch (e) {
     console.error(`[FastSync] Failed to receiveNoteSyncRename: ${normalizedOldPath} -> ${normalizedNewPath}`, e);
-    SyncLogManager.getInstance().addLog('receive', 'NoteRename', e instanceof Error ? e.message : String(e), 'error', data.path);
+    if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'NoteRename')) {
+      SyncLogManager.getInstance().addLog('receive', 'NoteRename', e instanceof Error ? e.message : String(e), 'error', data.path);
+    }
     dump(`Error in receiveNoteSyncRename: ${normalizedOldPath} -> ${normalizedNewPath}`, e);
   } finally {
     plugin.noteSyncTasks.completed++

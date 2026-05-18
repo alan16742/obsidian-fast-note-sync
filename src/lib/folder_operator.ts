@@ -1,7 +1,7 @@
 import { TFolder, normalizePath } from "obsidian";
 
 import { SyncEndData, FolderSyncRenameMessage } from "./types";
-import { hashContent, dump, isPathExcluded, waitForFolderEmpty, vaultDelete } from "./helps";
+import { hashContent, dump, isPathExcluded, waitForFolderEmpty, vaultDelete, checkAndNotifyCaseConflict } from "./helps";
 import { SyncLogManager } from "./sync_log_manager";
 import type FastSync from "../main";
 
@@ -126,9 +126,11 @@ export const receiveFolderSyncModify = async function (data: { path: string, mti
                     try {
                         await plugin.app.vault.createFolder(normalizedPath)
                     } catch (e) {
-                        // 文件夹可能因并发创建已存在（Linux 上会抛 "Folder already exists"），忽略此错误
-                        // Folder may already exist due to concurrent creation (Linux throws "Folder already exists"), ignore
-                        dump(`Folder create ignored (may already exist): ${normalizedPath}`, e)
+                        if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'FolderModify')) {
+                            // 文件夹可能因并发创建已存在（Linux 上会抛 "Folder already exists"），忽略此错误
+                            // Folder may already exist due to concurrent creation (Linux throws "Folder already exists"), ignore
+                            dump(`Folder create ignored (may already exist): ${normalizedPath}`, e)
+                        }
                     }
                 }
                 plugin.folderSnapshotManager.setFolderMtime(normalizedPath, data.mtime || Date.now())
@@ -140,7 +142,9 @@ export const receiveFolderSyncModify = async function (data: { path: string, mti
         }, { maxRetries: 5, retryInterval: 100 });
     } catch (e) {
         console.error(`[FastSync] Failed to receiveFolderSyncModify: ${normalizedPath}`, e);
-        SyncLogManager.getInstance().addLog('receive', 'FolderModify', e instanceof Error ? e.message : String(e), 'error', data.path);
+        if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'FolderModify')) {
+            SyncLogManager.getInstance().addLog('receive', 'FolderModify', e instanceof Error ? e.message : String(e), 'error', data.path);
+        }
         dump(`Error in receiveFolderSyncModify: ${normalizedPath}`, e)
     } finally {
         // 实时更新同步时间戳，与 note 端保持一致
@@ -246,7 +250,9 @@ export const receiveFolderSyncRename = async function (data: FolderSyncRenameMes
                     try {
                         await plugin.app.vault.createFolder(normalizedNewPath)
                     } catch (e) {
-                        dump(`Folder create ignored (may already exist): ${normalizedNewPath}`, e)
+                        if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'FolderRename')) {
+                            dump(`Folder create ignored (may already exist): ${normalizedNewPath}`, e)
+                        }
                     }
                     plugin.folderSnapshotManager.setFolderMtime(normalizedNewPath, data.mtime || Date.now())
                 }
@@ -254,7 +260,9 @@ export const receiveFolderSyncRename = async function (data: FolderSyncRenameMes
         }, { maxRetries: 10, retryInterval: 100 });
     } catch (e) {
         console.error(`[FastSync] Failed to receiveFolderSyncRename: ${normalizedOldPath} -> ${normalizedNewPath}`, e);
-        SyncLogManager.getInstance().addLog('receive', 'FolderRename', e instanceof Error ? e.message : String(e), 'error', data.path);
+        if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'FolderRename')) {
+            SyncLogManager.getInstance().addLog('receive', 'FolderRename', e instanceof Error ? e.message : String(e), 'error', data.path);
+        }
         dump(`Error in receiveFolderSyncRename: ${normalizedOldPath} -> ${normalizedNewPath}`, e)
     } finally {
         // 实时更新同步时间戳，与 note 端保持一致
