@@ -211,6 +211,9 @@ const SupportList = ({ plugin }: { plugin: FastSync }) => {
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState("amount_3m");
   const [hoverTooltip, setHoverTooltip] = useState<{ text: string, x: number, y: number, isMobile: boolean } | null>(null);
+  // Track the supporter record selected for detail modal viewing
+  // 跟踪被选择用于详情模态框展示的支持者记录
+  const [selectedRecord, setSelectedRecord] = useState<SupportRecord | null>(null);
   const [fetchError, setFetchError] = useState(false);
   const isMounted = useRef(true);
 
@@ -355,10 +358,8 @@ const SupportList = ({ plugin }: { plugin: FastSync }) => {
                   setHoverTooltip(prev => prev ? { ...prev, x: e.clientX, y: e.clientY, isMobile: false } : null);
                 }}
                 onPointerLeave={() => setHoverTooltip(null)}
-                onPointerDown={(e) => {
-                  if (e.pointerType !== 'touch') return;
-                  const msg = `${record.name || "Anonymous"}${record.message ? ': ' + record.message : ''}`;
-                  showSyncNotice(msg, 4000);
+                onClick={() => {
+                  setSelectedRecord(record);
                 }}
               >
                 {/* Date */}
@@ -425,6 +426,61 @@ const SupportList = ({ plugin }: { plugin: FastSync }) => {
               }}
             >
               {hoverTooltip.text}
+            </div>,
+            activeDocument.body
+          )}
+          {/* Supporter detail modal with premium design / 拥有高级精致设计的支持者留言详情模态框 */}
+          {selectedRecord && createPortal(
+            <div 
+              className="fns-supporter-modal-backdrop" 
+              onClick={() => setSelectedRecord(null)}
+            >
+              <div 
+                className="fns-supporter-modal" 
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div 
+                  className="fns-supporter-modal-close" 
+                  onClick={() => setSelectedRecord(null)}
+                >
+                  ✕
+                </div>
+                <div className="fns-supporter-modal-header">
+                  <div
+                    className="fns-supporter-modal-avatar"
+                    style={{ backgroundColor: getAvatarColor(selectedRecord.name) }}
+                  >
+                    {getInitials(selectedRecord.name)}
+                  </div>
+                  <div className="fns-supporter-modal-info">
+                    <div className="fns-supporter-modal-name">
+                      {selectedRecord.name || "Anonymous"}
+                    </div>
+                    <div className="fns-supporter-modal-amount">
+                      {selectedRecord.amount} 
+                      <span className="fns-supporter-modal-unit">
+                        {selectedRecord.unit}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="fns-supporter-modal-body">
+                  <div className="fns-supporter-modal-label">
+                    {$("setting.support.message_label")}
+                  </div>
+                  <div className={`fns-supporter-modal-text ${!selectedRecord.message ? 'is-empty' : ''}`}>
+                    {selectedRecord.message || $("setting.support.no_message")}
+                  </div>
+                </div>
+                <div className="fns-supporter-modal-footer">
+                  <button 
+                    className="fns-supporter-modal-btn" 
+                    onClick={() => setSelectedRecord(null)}
+                  >
+                    {$("ui.button.confirm")}
+                  </button>
+                </div>
+              </div>
             </div>,
             activeDocument.body
           )}

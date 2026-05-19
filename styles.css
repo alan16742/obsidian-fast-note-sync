@@ -3516,4 +3516,175 @@ body .suggestion-container {
   overflow-wrap: break-word;
 }
 
+/* ===== Supporter Detail Modal / 支持者详情模态弹窗 ===== */
+.fns-supporter-modal-backdrop {
+  /* Overlay background with glassmorphism / 毛玻璃遮罩背景 */
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 10000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: fns-backdrop-fade-in 0.2s ease-out;
+}
+
+.fns-supporter-modal {
+  /* Modal card container / 弹窗主体容器 */
+  position: relative;
+  background-color: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  width: 420px;
+  max-width: 90vw;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  animation: fns-modal-scale-up 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  color: var(--text-normal);
+}
+.fns-supporter-modal .fns-supporter-modal-close {
+  /* Close button / 关闭按钮 */
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  font-size: 18px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+.fns-supporter-modal .fns-supporter-modal-close:hover {
+  color: var(--text-normal);
+}
+.fns-supporter-modal .fns-supporter-modal-header {
+  /* Header layout / 头部布局 */
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border-bottom: 1px solid var(--background-modifier-border-faint);
+  padding-bottom: 16px;
+}
+.fns-supporter-modal .fns-supporter-modal-header .fns-supporter-modal-avatar {
+  /* Unique avatar with initials / 带首字母的头像 */
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: bold;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+.fns-supporter-modal .fns-supporter-modal-header .fns-supporter-modal-info {
+  /* Info layout / 个人信息 */
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.fns-supporter-modal .fns-supporter-modal-header .fns-supporter-modal-info .fns-supporter-modal-name {
+  /* Supporter name / 支持者姓名 */
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+.fns-supporter-modal .fns-supporter-modal-header .fns-supporter-modal-info .fns-supporter-modal-amount {
+  /* Support amount / 支持金额 */
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--interactive-accent);
+}
+.fns-supporter-modal .fns-supporter-modal-header .fns-supporter-modal-info .fns-supporter-modal-amount .fns-supporter-modal-unit {
+  /* Currency unit / 货币单位 */
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+.fns-supporter-modal .fns-supporter-modal-body {
+  /* Supporter message body / 留言正文区 */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.fns-supporter-modal .fns-supporter-modal-body .fns-supporter-modal-label {
+  /* Section label / 模块标签 */
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.fns-supporter-modal .fns-supporter-modal-body .fns-supporter-modal-text {
+  /* Message content card / 留言卡片内容 */
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  background-color: var(--background-secondary);
+  border-radius: 8px;
+  padding: 12px 16px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--background-modifier-border-faint);
+}
+.fns-supporter-modal .fns-supporter-modal-body .fns-supporter-modal-text.is-empty {
+  /* Stylized empty state / 空内容样式 */
+  font-style: italic;
+  color: var(--text-faint);
+}
+.fns-supporter-modal .fns-supporter-modal-footer {
+  /* Modal footer / 弹窗脚部 */
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+.fns-supporter-modal .fns-supporter-modal-footer .fns-supporter-modal-btn {
+  /* Confirm button / 确认按钮 */
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent, white);
+  border: none;
+  padding: 8px 24px;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+.fns-supporter-modal .fns-supporter-modal-footer .fns-supporter-modal-btn:hover {
+  background-color: var(--interactive-accent-hover);
+}
+.fns-supporter-modal .fns-supporter-modal-footer .fns-supporter-modal-btn:active {
+  transform: scale(0.97);
+}
+
+/* Animations / 动效定义 */
+@keyframes fns-backdrop-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes fns-modal-scale-up {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 /*# sourceMappingURL=styles.css.map */
