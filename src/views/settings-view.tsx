@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { dump, showSyncNotice } from "src/lib/helps";
-import { KofiImage, WXImage } from "src/lib/icons";
+import { KofiImage, WXImage } from "src/lib/images";
 import { createPortal } from "react-dom";
 import { setIcon } from "obsidian";
 import FastSync from "src/main";
@@ -431,16 +431,16 @@ const SupportList = ({ plugin }: { plugin: FastSync }) => {
           )}
           {/* Supporter detail modal with premium design / 拥有高级精致设计的支持者留言详情模态框 */}
           {selectedRecord && createPortal(
-            <div 
-              className="fns-supporter-modal-backdrop" 
+            <div
+              className="fns-supporter-modal-backdrop"
               onClick={() => setSelectedRecord(null)}
             >
-              <div 
-                className="fns-supporter-modal" 
+              <div
+                className="fns-supporter-modal"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div 
-                  className="fns-supporter-modal-close" 
+                <div
+                  className="fns-supporter-modal-close"
                   onClick={() => setSelectedRecord(null)}
                 >
                   ✕
@@ -457,7 +457,7 @@ const SupportList = ({ plugin }: { plugin: FastSync }) => {
                       {selectedRecord.name || "Anonymous"}
                     </div>
                     <div className="fns-supporter-modal-amount">
-                      {selectedRecord.amount} 
+                      {selectedRecord.amount}
                       <span className="fns-supporter-modal-unit">
                         {selectedRecord.unit}
                       </span>
@@ -473,8 +473,8 @@ const SupportList = ({ plugin }: { plugin: FastSync }) => {
                   </div>
                 </div>
                 <div className="fns-supporter-modal-footer">
-                  <button 
-                    className="fns-supporter-modal-btn" 
+                  <button
+                    className="fns-supporter-modal-btn"
                     onClick={() => setSelectedRecord(null)}
                   >
                     {$("ui.button.confirm")}

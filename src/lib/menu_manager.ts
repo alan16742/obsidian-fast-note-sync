@@ -1,7 +1,7 @@
 import { Menu, MenuItem, setIcon, Platform, WorkspaceLeaf } from 'obsidian';
 
 import { startupSync, startupFullSync, resetSettingSyncTime, rebuildAllHashes } from './operator';
-import { AppWithInternal, MenuItemWithDom, MenuWithHide } from "./types";
+import { AppWithInternal, MenuItemWithDom, MenuWithHide, MenuItemWithInternal } from "./types";
 import { NoteHistoryModal } from '../views/note-history/history-modal';
 import { RecycleBinModal } from '../views/recycle-bin-modal';
 import { showSyncNotice, isVersionNew } from './helps';
@@ -654,14 +654,15 @@ export class MenuManager {
           const ariaLabel = $("ui.status.new_version", { version: this.plugin.localStorageManager.getMetadata("pluginVersionNewName") || "" });
           (item as unknown as MenuItemWithDom).dom.setAttribute("aria-label", ariaLabel);
 
-          const itemDom = (item as unknown as MenuItemWithDom).dom;
-          const titleEl = itemDom.querySelector(".menu-item-title");
+          const titleEl = (item as unknown as MenuItemWithInternal).titleEl;
           if (titleEl) {
-            const iconSpan = titleEl.createSpan({ cls: "fast-note-sync-update-icon fns-update-icon" });
-            setIcon(iconSpan, "circle-arrow-up");
+            if (!titleEl.querySelector(".fns-menu-badge")) {
+              const iconSpan = titleEl.createSpan({ cls: "fast-note-sync-update-icon fns-update-icon" });
+              setIcon(iconSpan, "circle-arrow-up");
 
-            // Add red dot after text (文字后面右上红点)
-            titleEl.createSpan({ cls: "fns-menu-badge" });
+              // Add red dot after text (文字后面右上红点)
+              titleEl.createSpan({ cls: "fns-menu-badge" });
+            }
           }
         } else {
           (item as unknown as MenuItemWithDom).dom.setAttribute("aria-label", $("ui.menu.plugin_desc"));
@@ -687,14 +688,15 @@ export class MenuManager {
           const ariaLabel = $("ui.status.new_version", { version: this.plugin.localStorageManager.getMetadata("serverVersionNewName") || "" });
           (item as unknown as MenuItemWithDom).dom.setAttribute("aria-label", ariaLabel);
 
-          const itemDom = (item as unknown as MenuItemWithDom).dom;
-          const titleEl = itemDom.querySelector(".menu-item-title");
+          const titleEl = (item as unknown as MenuItemWithInternal).titleEl;
           if (titleEl) {
-            const iconSpan = titleEl.createSpan({ cls: "fast-note-sync-update-icon fns-update-icon fns-update-icon-sm" });
-            setIcon(iconSpan, "circle-arrow-up");
+            if (!titleEl.querySelector(".fns-menu-badge")) {
+              const iconSpan = titleEl.createSpan({ cls: "fast-note-sync-update-icon fns-update-icon fns-update-icon-sm" });
+              setIcon(iconSpan, "circle-arrow-up");
 
-            // Add red dot after text (文字后面右上红点)
-            titleEl.createSpan({ cls: "fns-menu-badge" });
+              // Add red dot after text (文字后面右上红点)
+              titleEl.createSpan({ cls: "fns-menu-badge" });
+            }
           }
         } else {
           (item as unknown as MenuItemWithDom).dom.setAttribute("aria-label", $("ui.menu.server_desc"));

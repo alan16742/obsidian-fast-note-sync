@@ -203,6 +203,7 @@ export interface MenuWithHide {
 
 export interface MenuItemWithInternal extends MenuItem {
     setSubmenu(): Menu;
+    titleEl?: HTMLElement;
 }
 
 
