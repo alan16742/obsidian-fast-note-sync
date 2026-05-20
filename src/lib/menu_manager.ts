@@ -430,10 +430,11 @@ export class MenuManager {
 
   updateStatusBar(text: string, current?: number, total?: number) {
     // If there is no text and no progress values, hide the status bar item completely and return early to avoid unwanted DOM creation and empty outlines.
-    // 如果没有文本且没有进度数值，则彻底隐藏状态栏项并提前返回，避免多余的 DOM 创建和空边框显示。
+    // 如果没有文本且没有进度数值，则彻底隐藏状态栏项并提前返回，避免多余 of DOM 创建和空边框显示。
     if (!text && current === undefined && total === undefined) {
       if (this.statusBarItem) {
         this.statusBarItem.addClass("fns-hidden");
+        this.statusBarItem.removeClass("fns-status-bar-progress");
       }
       return;
     }

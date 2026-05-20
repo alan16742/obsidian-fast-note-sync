@@ -816,6 +816,24 @@ export async function loadAutoRedirect(app: App, plugin: FastSync, dataJsonEnabl
 }
 
 /**
+ * 保存 WS连接前探测设置：直接使用 LocalStorage 存储 (Save WsPreProbe setting to LocalStorage)
+ */
+export async function saveWsPreProbe(app: App, plugin: FastSync, enabled: boolean): Promise<void> {
+  plugin.localStorageManager.setMetadata("wsPreProbeEnabled", enabled)
+}
+
+/**
+ * 获取 WS连接前探测设置：从 LocalStorage 获取 (Load WsPreProbe setting from LocalStorage)
+ */
+export async function loadWsPreProbe(app: App, plugin: FastSync, dataJsonEnabled?: boolean): Promise<boolean> {
+  const enabled = plugin.localStorageManager.getMetadata("wsPreProbeEnabled")
+  if (enabled === "" && dataJsonEnabled !== undefined) {
+    return dataJsonEnabled
+  }
+  return enabled === "" || enabled === true || enabled === "true"
+}
+
+/**
  * 保存 ApiToken：直接使用 LocalStorage 明文存储
  */
 export async function saveApiToken(app: App, plugin: FastSync, token: string): Promise<void> {

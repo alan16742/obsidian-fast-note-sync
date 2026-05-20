@@ -1,14 +1,16 @@
-import { App, PluginSettingTab, Setting, Platform, SearchComponent, MarkdownRenderer, Component } from "obsidian";
+import { App, PluginSettingTab, Setting, Platform, SearchComponent, MarkdownRenderer, Component, requestUrl, Modal } from "obsidian";
 import { createRoot, Root } from "react-dom/client";
+import { unzipSync } from "fflate";
 
-import { resetSettingSyncTime, rebuildAllHashes, clearAllHashes } from "./lib/operator";
 import { parseRules, SyncRule, getPluginDir, debounce, showSyncNotice, dumpError } from "./lib/helps";
+import { resetSettingSyncTime, rebuildAllHashes, clearAllHashes } from "./lib/operator";
 import { SettingsView, SupportView } from "./views/settings-view";
 import { RuleEditorModal } from "./views/rule-editor-modal";
-import { ConfirmModal } from "./views/confirm-modal";
-import { RuleEditor } from "./views/rule-editor";
 import { PathSuggestOptions } from "./views/path-suggest";
 import { DebugLogModal } from "./views/debug-log-modal";
+import { ConfirmModal } from "./views/confirm-modal";
+import { RuleEditor } from "./views/rule-editor";
+import { AppWithInternal } from "./lib/types";
 import { $ } from "./i18n/lang";
 import FastSync from "./main";
 
@@ -86,6 +88,8 @@ export interface PluginSettings {
   showConcurrencyIndicator: boolean
   /** 是否自动检测 API 跳转 (301/302) */
   autoRedirectEnabled: boolean
+  /** 是否在WS连接前进行探测 */
+  wsPreProbeEnabled: boolean
   /** 移动端消息通知距顶距离（px）/ Mobile toast top offset (px) */
   mobileToastTop: number
   /** 手机端失焦延迟暂停同步 / Mobile blur pause delay */
@@ -141,6 +145,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   maxConcurrentUploads: 20,
   showConcurrencyIndicator: true,
   autoRedirectEnabled: false,
+  wsPreProbeEnabled: true,
   // 手机 110，平板 126，与 CSS 硬编码值一致 / Phone 110, tablet 126, matches CSS defaults
   mobileToastTop: Platform.isTablet ? 126 : 110,
   mobileBlurPauseEnabled: true,
@@ -181,7 +186,7 @@ export class SettingTab extends PluginSettingTab {
   private lastViewMode: string = "" // 用于记录上次渲染的模式 (TabId 或 "SEARCH")
 
   private component: Component = new Component()
-  
+
   constructor(app: App, plugin: FastSync) {
     super(app, plugin)
     this.plugin = plugin
@@ -552,18 +557,18 @@ export class SettingTab extends PluginSettingTab {
           isDesktop: Platform.isDesktopApp,
           isMobile: Platform.isMobile,
           isTablet: Platform.isTablet,
-          platform: typeof process !== "undefined" ? (process.platform ?? "unknown"): "unknown",
+          platform: typeof process !== "undefined" ? (process.platform ?? "unknown") : "unknown",
           arch: typeof process !== "undefined" ? (process.arch ?? "unknown") : "unknown",
           userAgent: "Obsidian/" + ((this.app as unknown as { version: string }).version || "unknown"),
           versions:
-              typeof process !== "undefined" && process.versions
-                ? {
+            typeof process !== "undefined" && process.versions
+              ? {
                 node: process.versions.node,
                 electron: process.versions.electron,
                 chrome: process.versions.chrome,
                 v8: process.versions.v8,
-                }
-                : {},
+              }
+              : {},
           capacitor: (window as unknown as { Capacitor: { getPlatform(): string; isNative: boolean } }).Capacitor
             ? {
               platform: (window as unknown as { Capacitor: { getPlatform(): string; isNative: boolean } }).Capacitor.getPlatform(),
@@ -589,14 +594,14 @@ export class SettingTab extends PluginSettingTab {
     const debugButton = debugDiv.createEl("button")
     debugButton.setText($("setting.support.debug_copy"))
     debugButton.onclick = async () => {
-        try {
-            await navigator.clipboard.writeText(this.getDebugInfo())
-            showSyncNotice($("setting.support.debug_desc"))
-        } catch (e) {
-            console.error("[fast-note-sync] copy debug info failed:", e)
-            // TODO(i18n): replace with localized key, e.g. $("setting.support.debug_copy_failed")
-            showSyncNotice("Failed to copy debug info.")
-        }
+      try {
+        await navigator.clipboard.writeText(this.getDebugInfo())
+        showSyncNotice($("setting.support.debug_desc"))
+      } catch (e) {
+        console.error("[fast-note-sync] copy debug info failed:", e)
+        // TODO(i18n): replace with localized key, e.g. $("setting.support.debug_copy_failed")
+        showSyncNotice("Failed to copy debug info.")
+      }
     }
 
     if (isHomePage) {
@@ -604,12 +609,12 @@ export class SettingTab extends PluginSettingTab {
       issueButton.setText($("setting.support.issue"))
       issueButton.onclick = async () => {
         try {
-            await navigator.clipboard.writeText(this.getDebugInfo())
-            showSyncNotice($("setting.support.debug_desc"))
+          await navigator.clipboard.writeText(this.getDebugInfo())
+          showSyncNotice($("setting.support.debug_desc"))
         } catch (e) {
-            console.error("[fast-note-sync] copy debug info failed:", e)
-            // TODO(i18n): replace with localized key, e.g. $("setting.support.debug_copy_failed")
-            showSyncNotice("Failed to copy debug info.")
+          console.error("[fast-note-sync] copy debug info failed:", e)
+          // TODO(i18n): replace with localized key, e.g. $("setting.support.debug_copy_failed")
+          showSyncNotice("Failed to copy debug info.")
         }
         new ConfirmModal(
           this.app,
@@ -690,6 +695,20 @@ export class SettingTab extends PluginSettingTab {
         ).open()
       }
 
+      const installButton = debugDiv.createEl("button")
+      installButton.setText($("setting.debug.version_install_title") || "指定版本安装")
+      installButton.onclick = () => {
+        new InputModal(
+          this.app,
+          $("setting.debug.version_install_title") || "指定版本安装",
+          $("setting.debug.version_install_desc") || "直接绕开远端服务下载并覆盖安装指定版本的插件。",
+          "例如: 2.0.12",
+          (val) => {
+            void this.startVersionInstall(val, installButton)
+          }
+        ).open()
+      }
+
       const resetAllButton = debugDiv.createEl("button")
       resetAllButton.addClass("mod-cta", "fns-white-text")
       resetAllButton.setText($("setting.debug.reset_all"))
@@ -708,49 +727,49 @@ export class SettingTab extends PluginSettingTab {
                 vault: this.plugin.settings.vault,
               }).catch(e => dumpError(e))
 
-            // 备份需要保留的远端核心配置
-            const backup = {
-              api: this.plugin.settings.api,
-              apiToken: this.plugin.settings.apiToken,
-              vault: this.plugin.settings.vault,
-              debugRemoteUrls: this.plugin.settings.debugRemoteUrls,
-              networkLibrary: this.plugin.settings.networkLibrary,
-            }
-            // 备份客户端名称（元数据）
-            const clientNameBackup = this.plugin.localStorageManager.getMetadata("clientName")
+              // 备份需要保留的远端核心配置
+              const backup = {
+                api: this.plugin.settings.api,
+                apiToken: this.plugin.settings.apiToken,
+                vault: this.plugin.settings.vault,
+                debugRemoteUrls: this.plugin.settings.debugRemoteUrls,
+                networkLibrary: this.plugin.settings.networkLibrary,
+              }
+              // 备份客户端名称（元数据）
+              const clientNameBackup = this.plugin.localStorageManager.getMetadata("clientName")
 
-            // 重置 settings 为默认值
-            this.plugin.settings = Object.assign({}, DEFAULT_SETTINGS)
+              // 重置 settings 为默认值
+              this.plugin.settings = Object.assign({}, DEFAULT_SETTINGS)
 
-            // 恢复备份的远端设置
-            this.plugin.settings.api = backup.api
-            this.plugin.settings.apiToken = backup.apiToken
-            this.plugin.settings.vault = backup.vault
-            this.plugin.settings.debugRemoteUrls = backup.debugRemoteUrls
-            this.plugin.settings.networkLibrary = backup.networkLibrary
+              // 恢复备份的远端设置
+              this.plugin.settings.api = backup.api
+              this.plugin.settings.apiToken = backup.apiToken
+              this.plugin.settings.vault = backup.vault
+              this.plugin.settings.debugRemoteUrls = backup.debugRemoteUrls
+              this.plugin.settings.networkLibrary = backup.networkLibrary
 
-            // 重新初始化某些依赖库路径的动态默认值
-            const defaultExcludes = [`${getPluginDir(this.plugin)}/data.json`, `${this.app.vault.configDir}/community-plugins.json`]
-            this.plugin.settings.syncExcludeFolders = JSON.stringify(defaultExcludes.map((pattern) => ({ pattern, caseSensitive: false })))
+              // 重新初始化某些依赖库路径的动态默认值
+              const defaultExcludes = [`${getPluginDir(this.plugin)}/data.json`, `${this.app.vault.configDir}/community-plugins.json`]
+              this.plugin.settings.syncExcludeFolders = JSON.stringify(defaultExcludes.map((pattern) => ({ pattern, caseSensitive: false })))
 
-            // 确保客户端名称不被重置
-            if (clientNameBackup) {
-              this.plugin.localStorageManager.setMetadata("clientName", clientNameBackup)
-            }
+              // 确保客户端名称不被重置
+              if (clientNameBackup) {
+                this.plugin.localStorageManager.setMetadata("clientName", clientNameBackup)
+              }
 
-            // 深度清理：同步时间记录 + 哈希表
-            await resetSettingSyncTime(this.plugin)
-            await rebuildAllHashes(this.plugin)
+              // 深度清理：同步时间记录 + 哈希表
+              await resetSettingSyncTime(this.plugin)
+              await rebuildAllHashes(this.plugin)
 
-            // 保存设置
-            await this.plugin.saveAndReloadServices()
+              // 保存设置
+              await this.plugin.saveAndReloadServices()
 
-            showSyncNotice($("setting.debug.reset_all_success"))
+              showSyncNotice($("setting.debug.reset_all_success"))
 
-            // 重新渲染设置页面以展示变化
-            this.display()
-          })();
-        },
+              // 重新渲染设置页面以展示变化
+              this.display()
+            })();
+          },
           $("ui.button.confirm"),
           $("ui.button.cancel"),
           false,
@@ -821,6 +840,187 @@ export class SettingTab extends PluginSettingTab {
     this.renderDebugTools(set, false)
   }
 
+  /**
+   * 下载、解压并覆盖安装指定版本的插件，并在完成后安全热重载插件
+   * Download, unzip and overwrite install a specific version of the plugin, and safely hot-reload the plugin upon completion
+   */
+  private async startVersionInstall(inputVersion: string, btn: any) {
+    console.info("[fast-note-sync] startVersionInstall called with input:", inputVersion);
+    let latest = inputVersion.trim();
+    if (!latest) {
+      showSyncNotice($("setting.debug.version_install_empty") || "请输入要安装的版本号");
+      console.warn("[fast-note-sync] version input is empty");
+      return;
+    }
+
+    // 1. 剥离可能存在的 'v' 或 'V' 前缀 / Strip possible 'v' or 'V' prefix
+    if (latest.startsWith("v") || latest.startsWith("V")) {
+      latest = latest.substring(1);
+    }
+    console.log("[fast-note-sync] sanitized version input:", latest);
+
+    // 2. 严格的 x.x.x 格式正则表达式校验 / Strict regex validation for x.x.x format
+    const versionRegex = /^\d+\.\d+\.\d+$/;
+    if (!versionRegex.test(latest)) {
+      showSyncNotice($("setting.debug.version_install_invalid") || "版本号格式错误，必须为 x.x.x 格式（例如: 2.0.12）");
+      console.warn("[fast-note-sync] version format check failed:", latest);
+      return;
+    }
+
+    const tag = "v" + latest;
+    const confirmMsg = ($("setting.debug.version_install_confirm") || "确认要从更新源下载并覆盖安装版本为 ${version} 的插件吗？").replace("${version}", tag);
+
+    console.log("[fast-note-sync] opening ConfirmModal for tag:", tag);
+    new ConfirmModal(
+      this.app,
+      $("ui.title.notice"),
+      confirmMsg,
+      async () => {
+        console.info("[fast-note-sync] ConfirmModal confirmed. Disabling button...");
+        // 自适应处理 ButtonComponent 和 HTMLButtonElement / Adaptive handling for ButtonComponent and HTMLButtonElement
+        const setDisabled = (b: any, state: boolean) => {
+          if (typeof b.setDisabled === "function") {
+            b.setDisabled(state);
+          } else {
+            b.disabled = state;
+          }
+        };
+
+        const setBtnText = (b: any, text: string) => {
+          if (typeof b.setButtonText === "function") {
+            b.setButtonText(text);
+          } else {
+            b.textContent = text;
+          }
+        };
+
+        const getBtnText = (b: any) => {
+          if (typeof b.setButtonText === "function") {
+            return b.buttonEl.textContent || "";
+          }
+          return b.textContent || "";
+        };
+
+        setDisabled(btn, true);
+        const originalText = getBtnText(btn);
+        console.log("[fast-note-sync] original button text:", originalText);
+        setBtnText(btn, $("setting.debug.version_installing") || "正在安装...");
+
+        try {
+          const source = this.plugin.settings.updateSource || "github";
+          const zipFileName = `fast-note-sync-v${latest}.zip`;
+          const pluginDir = getPluginDir(this.plugin);
+
+          let url = "";
+          if (source === "github") {
+            url = `https://github.com/haierkeys/obsidian-fast-note-sync/releases/download/${latest}/${zipFileName}`;
+          } else {
+            // CNB 链接格式：releases/download/{version}/fast-note-sync-v{version}.zip
+            url = `https://cnb.cool/haierkeys/obsidian-fast-note-sync/-/releases/download/${latest}/${zipFileName}`;
+          }
+
+          console.info(`[fast-note-sync] preparing download. Source: ${source}, Tag: ${tag}, Zip: ${zipFileName}, Dir: ${pluginDir}, URL: ${url}`);
+          showSyncNotice($("ui.version.downloading_file", { file: zipFileName }) || `正在下载 ${zipFileName}...`);
+
+          // 3. 跨域下载 Zip 包 / Download zip with requestUrl to bypass CORS and gain speed
+          console.log("[fast-note-sync] initiating requestUrl request to:", url);
+          const response = await requestUrl({
+            url: url,
+            method: "GET",
+          });
+
+          console.log("[fast-note-sync] requestUrl returned. status:", response.status);
+          if (response.status !== 200) {
+            throw new Error(`Failed to download ${zipFileName}: ${response.status}`);
+          }
+
+          showSyncNotice("下载成功，正在解密与提取文件...");
+          const arrayBuffer = response.arrayBuffer;
+          console.log("[fast-note-sync] arrayBuffer loaded. size in bytes:", arrayBuffer.byteLength);
+
+          console.log("[fast-note-sync] unzipping file contents with fflate...");
+          const unzipped = unzipSync(new Uint8Array(arrayBuffer));
+          console.log("[fast-note-sync] unzip completed. Total items in zip:", Object.keys(unzipped).length);
+
+          // 4. 自动检测根目录前缀（寻找 manifest.json 所在位置） / Automatically detect root prefix in zip
+          let rootPrefix = "";
+          const fileNames = Object.keys(unzipped);
+          const manifestFile = fileNames.find((f) => f.endsWith("manifest.json"));
+          if (manifestFile) {
+            rootPrefix = manifestFile.replace("manifest.json", "");
+          }
+          console.log("[fast-note-sync] zip root prefix detected:", rootPrefix || "(none)");
+
+          const files = Object.entries(unzipped).filter(([name]) => !name.endsWith("/") && name.startsWith(rootPrefix));
+          console.log("[fast-note-sync] total files filtered to extract:", files.length);
+
+          // 5. 递归解压并覆盖写入 / Extract and overwrite recursively
+          let count = 0;
+          for (const [realFilename, content] of files) {
+            const relativeFilename = realFilename.substring(rootPrefix.length);
+            if (!relativeFilename) continue;
+
+            const path = `${pluginDir}/${relativeFilename}`;
+            console.log(`[fast-note-sync] extracting file [${++count}/${files.length}]: ${relativeFilename} -> ${path}`);
+
+            // 确保父目录存在 / Ensure parent directory exists
+            const pathParts = relativeFilename.split("/");
+            if (pathParts.length > 1) {
+              let currentPath = pluginDir;
+              for (let i = 0; i < pathParts.length - 1; i++) {
+                currentPath += `/${pathParts[i]}`;
+                if (!(await this.plugin.app.vault.adapter.exists(currentPath))) {
+                  console.log(`[fast-note-sync] creating directory: ${currentPath}`);
+                  await this.plugin.app.vault.adapter.mkdir(currentPath);
+                }
+              }
+            }
+
+            console.log(`[fast-note-sync] writing binary data to: ${path}`);
+            await this.plugin.app.vault.adapter.writeBinary(path, content.buffer as ArrayBuffer);
+          }
+          console.info("[fast-note-sync] all files successfully extracted and written to filesystem.");
+
+          // 6. 热重载插件 / Hot reload plugin
+          showSyncNotice($("setting.debug.version_installing_notice") || "正在安装指定版本插件...");
+          console.info("[fast-note-sync] initiating plugin hot reload...");
+
+          const app = this.app as AppWithInternal;
+          const plugins = app.plugins;
+          if (!plugins) {
+            throw new Error("Cannot find plugin manager.");
+          }
+
+          const id = this.plugin.manifest.id;
+          console.log("[fast-note-sync] target plugin ID to reload:", id);
+
+          await new Promise((resolve) => window.setTimeout(resolve, 500));
+
+          console.log("[fast-note-sync] disabling plugin...");
+          await plugins.disablePlugin(id);
+          console.log("[fast-note-sync] loading plugin manifests...");
+          await plugins.loadManifests();
+          console.log("[fast-note-sync] enabling plugin...");
+          await plugins.enablePlugin(id);
+
+          console.info("[fast-note-sync] hot reload finished successfully.");
+          showSyncNotice($("setting.debug.version_install_success") || "插件安装并重载成功", 10000);
+        } catch (e) {
+          const errorMsg = e instanceof Error ? e.message : String(e);
+          console.error("[fast-note-sync] manual version install failed with error:", e);
+          showSyncNotice(($("setting.debug.version_install_fail") || "插件安装失败") + ": " + errorMsg);
+        } finally {
+          console.info("[fast-note-sync] startVersionInstall execution completed. Restoring button state.");
+          setDisabled(btn, false);
+          setBtnText(btn, originalText || "开始安装");
+        }
+      },
+      $("ui.button.confirm"),
+      $("ui.button.cancel"),
+      false,
+    ).open();
+  }
+
   private renderDisplaySettings(set: HTMLElement) {
     new Setting(set).setName($("setting.general.show_notice")).setClass("fns-setting-item-checkbox").addToggle((toggle) =>
       toggle.setValue(this.plugin.settings.isShowNotice).onChange(async (value) => {
@@ -880,8 +1080,8 @@ export class SettingTab extends PluginSettingTab {
           this.plugin.settings.showUpgradeBadge = value
           await this.plugin.saveAndReloadServices()
           this.plugin.menuManager?.refreshUpgradeBadge()
-            // 触发设置变更事件以通知 React 视图 / Trigger settings change event to notify React views
-            this.app.workspace.trigger("fns:settings-change")
+          // 触发设置变更事件以通知 React 视图 / Trigger settings change event to notify React views
+          this.app.workspace.trigger("fns:settings-change")
         }
       }),
     )
@@ -993,6 +1193,14 @@ export class SettingTab extends PluginSettingTab {
       }),
     )
     this.setDescWithBreaks(set.lastElementChild as HTMLElement, $("setting.remote.auto_redirect_desc"))
+
+    new Setting(set).setName($("setting.remote.ws_pre_probe")).setClass("fns-setting-item-checkbox").addToggle((toggle) =>
+      toggle.setValue(this.plugin.settings.wsPreProbeEnabled).onChange(async (value) => {
+        this.plugin.settings.wsPreProbeEnabled = value
+        await this.plugin.saveAndReloadServices()
+      }),
+    )
+    this.setDescWithBreaks(set.lastElementChild as HTMLElement, $("setting.remote.ws_pre_probe_desc"))
 
     new Setting(set).setName($("setting.remote.client_name")).addText((text) =>
       text
@@ -1510,3 +1718,84 @@ export class SettingTab extends PluginSettingTab {
     })
   }
 }
+
+/**
+ * 优雅的原生输入模态框，用于指定版本安装等输入场景
+ * Elegant native input modal for version installation and other text input scenarios
+ */
+export class InputModal extends Modal {
+  private onSubmit: (value: string) => void;
+  private inputEl: HTMLInputElement;
+
+  constructor(
+    app: App,
+    private titleStr: string,
+    private descStr: string,
+    private placeholderStr: string,
+    onSubmit: (value: string) => void
+  ) {
+    super(app);
+    this.onSubmit = onSubmit;
+  }
+
+  onOpen() {
+    const { contentEl, titleEl } = this;
+    titleEl.setText(this.titleStr);
+
+    contentEl.createEl("p", {
+      text: this.descStr,
+      cls: "fns-modal-desc"
+    });
+
+    const inputContainer = contentEl.createDiv("fns-modal-input-container");
+    this.inputEl = inputContainer.createEl("input", {
+      type: "text",
+      placeholder: this.placeholderStr
+    });
+    this.inputEl.addClass("fns-modal-input");
+    this.inputEl.style.width = "100%";
+    this.inputEl.style.marginTop = "10px";
+    this.inputEl.style.marginBottom = "20px";
+    this.inputEl.focus();
+
+    // 绑定 Enter 键触发提交 / Bind Enter key to submit
+    this.inputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        e.stopPropagation();
+        this.submit();
+      }
+    });
+
+    const buttonContainer = contentEl.createDiv("fns-modal-button-container");
+    buttonContainer.style.display = "flex";
+    buttonContainer.style.justifyContent = "flex-end";
+    buttonContainer.style.gap = "10px";
+
+    const confirmBtn = buttonContainer.createEl("button", {
+      text: $("ui.button.confirm") || "确认"
+    });
+    confirmBtn.addClass("mod-cta");
+    confirmBtn.onclick = () => this.submit();
+
+    const cancelBtn = buttonContainer.createEl("button", {
+      text: $("ui.button.cancel") || "取消"
+    });
+    cancelBtn.onclick = () => this.close();
+  }
+
+  private submit() {
+    const val = this.inputEl.value.trim();
+    this.close();
+    if (val) {
+      this.onSubmit(val);
+    } else {
+      showSyncNotice($("setting.debug.version_install_empty") || "请输入要安装的版本号");
+    }
+  }
+
+  onClose() {
+    this.contentEl.empty();
+  }
+}
+

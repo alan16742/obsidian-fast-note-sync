@@ -57,6 +57,13 @@ export class ConfirmModal extends Modal {
                     this.close();
                 })
             );
+
+        // 绑定键盘回车键确认 / Bind Enter key to confirm
+        this.scope.register([], "Enter", (evt) => {
+            evt.preventDefault();
+            this.close();
+            this.onConfirm();
+        });
     }
 
     onClose() {

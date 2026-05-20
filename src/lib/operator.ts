@@ -40,9 +40,9 @@ export const clearAllHashes = async (plugin: FastSync) => {
  * 检查同步是否完成
  */
 export function checkSyncCompletion(plugin: FastSync, intervalId?: number, syncStartTime?: number) {
-  // 超时保底：如果同步超过 60 秒仍未完成，强制结束并恢复 watch，防止因任务计数异常导致永远无法发送
-  // Safety timeout: if sync exceeds 60s, force completion and re-enable watch to prevent permanent send blockage
-  const SYNC_TIMEOUT_MS = 60000;
+  // 超时保底：如果同步超过 30 秒仍未完成，强制结束并恢复 watch，防止因任务计数异常导致永远无法发送
+  // Safety timeout: if sync exceeds 30s, force completion and re-enable watch to prevent permanent send blockage
+  const SYNC_TIMEOUT_MS = 30000;
   if (syncStartTime && Date.now() - syncStartTime > SYNC_TIMEOUT_MS) {
     if (intervalId) window.clearInterval(intervalId);
     dump(`Sync completion timeout after ${SYNC_TIMEOUT_MS}ms, force enabling watch. Tasks: note=${JSON.stringify(plugin.noteSyncTasks)}, file=${JSON.stringify(plugin.fileSyncTasks)}, folder=${JSON.stringify(plugin.folderSyncTasks)}, config=${JSON.stringify(plugin.configSyncTasks)}`)
@@ -63,11 +63,18 @@ export function checkSyncCompletion(plugin: FastSync, intervalId?: number, syncS
   const ws = plugin.websocket.ws;
   const bufferedAmount = ws && ws.readyState === WebSocket.OPEN ? ws.bufferedAmount : 0;
 
-  // 模块进度的完成判定：已收到 End 通知，且已处理的明细数达到需处理总数
-  const noteSyncDone = plugin.noteSyncEnd && plugin.noteSyncTasks.completed >= (plugin.noteSyncTasks.needUpload + plugin.noteSyncTasks.needModify + plugin.noteSyncTasks.needSyncMtime + plugin.noteSyncTasks.needDelete);
-  const fileSyncDone = plugin.fileSyncEnd && plugin.fileSyncTasks.completed >= (plugin.fileSyncTasks.needUpload + plugin.fileSyncTasks.needModify + plugin.fileSyncTasks.needSyncMtime + plugin.fileSyncTasks.needDelete);
-  const configSyncDone = plugin.configSyncEnd && plugin.configSyncTasks.completed >= (plugin.configSyncTasks.needUpload + plugin.configSyncTasks.needModify + plugin.configSyncTasks.needSyncMtime + plugin.configSyncTasks.needDelete);
-  const folderSyncDone = plugin.folderSyncEnd && plugin.folderSyncTasks.completed >= (plugin.folderSyncTasks.needUpload + plugin.folderSyncTasks.needModify + plugin.folderSyncTasks.needSyncMtime + plugin.folderSyncTasks.needDelete);
+  // 模块进度的完成判定：已处理的明细数达到需处理总数（即使未收到 End 消息，只要完成数达标也视为结束，增强网络容错）
+  const noteTasksTotal = plugin.noteSyncTasks.needUpload + plugin.noteSyncTasks.needModify + plugin.noteSyncTasks.needSyncMtime + plugin.noteSyncTasks.needDelete;
+  const noteSyncDone = (plugin.noteSyncEnd || plugin.noteSyncTasks.completed >= noteTasksTotal) && plugin.noteSyncTasks.completed >= noteTasksTotal;
+
+  const fileTasksTotal = plugin.fileSyncTasks.needUpload + plugin.fileSyncTasks.needModify + plugin.fileSyncTasks.needSyncMtime + plugin.fileSyncTasks.needDelete;
+  const fileSyncDone = (plugin.fileSyncEnd || plugin.fileSyncTasks.completed >= fileTasksTotal) && plugin.fileSyncTasks.completed >= fileTasksTotal;
+
+  const configTasksTotal = plugin.configSyncTasks.needUpload + plugin.configSyncTasks.needModify + plugin.configSyncTasks.needSyncMtime + plugin.configSyncTasks.needDelete;
+  const configSyncDone = (plugin.configSyncEnd || plugin.configSyncTasks.completed >= configTasksTotal) && plugin.configSyncTasks.completed >= configTasksTotal;
+
+  const folderTasksTotal = plugin.folderSyncTasks.needUpload + plugin.folderSyncTasks.needModify + plugin.folderSyncTasks.needSyncMtime + plugin.folderSyncTasks.needDelete;
+  const folderSyncDone = (plugin.folderSyncEnd || plugin.folderSyncTasks.completed >= folderTasksTotal) && plugin.folderSyncTasks.completed >= folderTasksTotal;
 
   const allSyncDone = (!plugin.settings.syncEnabled || (noteSyncDone && folderSyncDone && (plugin.settings.cloudPreviewEnabled || fileSyncDone))) &&
     (!plugin.settings.configSyncEnabled || configSyncDone);
@@ -407,6 +414,25 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
     plugin.localStorageManager.clearPending('pendingConfigModifies')
     plugin.disableWatch();
 
+    const shouldSyncNotes = syncMode === "auto" || syncMode === "note";
+    const shouldSyncConfigs = syncMode === "auto" || syncMode === "config";
+
+    let expectedCount = 0;
+    if (plugin.settings.syncEnabled && shouldSyncNotes) {
+      expectedCount += 1; // NoteSync
+      expectedCount += 1; // FolderSync
+      if (!plugin.settings.cloudPreviewEnabled || plugin.settings.cloudPreviewTypeRestricted) {
+        expectedCount += 1; // FileSync
+      }
+    }
+    if (plugin.settings.configSyncEnabled && shouldSyncConfigs) expectedCount += 1;
+    plugin.expectedSyncCount = expectedCount;
+    if (expectedCount === 0) {
+      plugin.enableWatch();
+      plugin.updateStatusBar("");
+      return;
+    }
+
     if (plugin.settings.isShowNotice && (plugin.settings.syncEnabled || plugin.settings.configSyncEnabled)) {
       showSyncNotice($("ui.status.starting"));
     }
@@ -428,8 +454,6 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
     const notes: SnapFile[] = [], files: SnapFile[] = [], configs: SnapFile[] = [], folders: SnapFolder[] = [];
     const delNotes: PathHashFile[] = [], delFiles: PathHashFile[] = [], delConfigs: PathHashFile[] = [], delFolders: PathHashFile[] = [];
     const missingNotes: PathHashFile[] = [], missingFiles: PathHashFile[] = [], missingConfigs: PathHashFile[] = [], missingFolders: PathHashFile[] = [];
-    const shouldSyncNotes = syncMode === "auto" || syncMode === "note";
-    const shouldSyncConfigs = syncMode === "auto" || syncMode === "config";
 
     // 预先标记未参与本次同步的模块为已结束，避免 checkSyncCompletion 永远等待它们
     // Pre-mark modules not participating in this sync as ended to prevent checkSyncCompletion from waiting forever
@@ -442,22 +466,6 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
     }
     if (!(plugin.settings.configSyncEnabled && shouldSyncConfigs)) {
       plugin.configSyncEnd = true;
-    }
-
-    let expectedCount = 0;
-    if (plugin.settings.syncEnabled && shouldSyncNotes) {
-      expectedCount += 1; // NoteSync
-      expectedCount += 1; // FolderSync
-      if (!plugin.settings.cloudPreviewEnabled || plugin.settings.cloudPreviewTypeRestricted) {
-        expectedCount += 1; // FileSync
-      }
-    }
-    if (plugin.settings.configSyncEnabled && shouldSyncConfigs) expectedCount += 1;
-    plugin.expectedSyncCount = expectedCount;
-    if (expectedCount === 0) {
-      plugin.enableWatch();
-      plugin.updateStatusBar("");
-      return;
     }
 
     if (plugin.settings.syncEnabled && shouldSyncNotes) {
@@ -839,6 +847,11 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
     const progressCheckInterval = window.setInterval(() => {
       checkSyncCompletion(plugin, progressCheckInterval, syncStartTime);
     }, 100);
+  } catch (error) {
+    dump("Sync failed with error: " + error);
+    plugin.enableWatch();
+    plugin.updateStatusBar($("ui.status.failed") || "Sync Failed");
+    window.setTimeout(() => plugin.updateStatusBar(""), 3000);
   } finally {
     // 确保 isSyncing 在所有退出路径（正常完成、early return、异常）下都被重置
     // Ensure isSyncing is reset on all exit paths: normal completion, early return, or exception

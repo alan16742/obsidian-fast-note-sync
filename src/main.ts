@@ -1,6 +1,6 @@
 import { Plugin, Platform, addIcon } from "obsidian";
 
-import { dump, dumpError, checkAndNotifyCaseConflict, setLogEnabled, isPathMatch, parseRules, stringifyRules, getPluginDir, showSyncNotice, loadApiToken, saveApiToken, loadApiUrl, saveApiUrl, loadVault, saveVault, loadAutoRedirect, saveAutoRedirect } from "./lib/helps";
+import { dump, dumpError, checkAndNotifyCaseConflict, setLogEnabled, isPathMatch, parseRules, stringifyRules, getPluginDir, showSyncNotice, loadApiToken, saveApiToken, loadApiUrl, saveApiUrl, loadVault, saveVault, loadAutoRedirect, saveAutoRedirect, loadWsPreProbe, saveWsPreProbe } from "./lib/helps";
 import { DebugLogManager } from "./lib/debug_log_manager";
 import { clearAllTempChunks, abortAllFileOperations, resetFileOperations } from "./lib/file_operator";
 import { SettingTab, PluginSettings, DEFAULT_SETTINGS } from "./setting";
@@ -31,6 +31,7 @@ interface LegacySettings extends Partial<PluginSettings> {
   api?: string;
   vault?: string;
   autoRedirectEnabled?: boolean;
+  wsPreProbeEnabled?: boolean;
   syncExcludeFolders?: string;
   configExclude?: string;
   configExcludeWhitelist?: string;
@@ -532,6 +533,8 @@ export default class FastSync extends Plugin {
     // 2. 处理 API URL 和 Vault (LocalStorage > data.json)
     const api = await loadApiUrl(this.app, this, data?.api);
     this.settings.api = api;
+    this.runApi = api;
+    this.runWsApi = api ? api.replace(/^http/, "ws") : "";
 
     const vault = await loadVault(this.app, this, data?.vault);
     this.settings.vault = vault || this.app.vault.getName();
@@ -540,8 +543,12 @@ export default class FastSync extends Plugin {
     const autoRedirect = await loadAutoRedirect(this.app, this, data?.autoRedirectEnabled);
     this.settings.autoRedirectEnabled = autoRedirect;
 
+    // 3.1 处理 WS 前探测设置 (LocalStorage > data.json)
+    const wsPreProbe = await loadWsPreProbe(this.app, this, data?.wsPreProbeEnabled);
+    this.settings.wsPreProbeEnabled = wsPreProbe;
+
     // 如果原始 data.json 中存有敏感信息或环境特定信息，标记迁移以触发后续的清理保存
-    if (data && (data.apiToken || data.api || data.vault || data.autoRedirectEnabled !== undefined)) {
+    if (data && (data.apiToken || data.api || data.vault || data.autoRedirectEnabled !== undefined || data.wsPreProbeEnabled !== undefined)) {
       hasMigration = true;
     }
 
@@ -678,8 +685,8 @@ export default class FastSync extends Plugin {
 
     this.localStorageManager.setInternalExcludes(internalRules);
 
-    // 从 settings 副本中移除 apiToken, api, vault, autoRedirectEnabled，确保其不被存入 data.json
-    const { apiToken, api, vault, autoRedirectEnabled, ...restSettings } = this.settings;
+    // 从 settings 副本中移除 apiToken, api, vault, autoRedirectEnabled, wsPreProbeEnabled，确保其不被存入 data.json
+    const { apiToken, api, vault, autoRedirectEnabled, wsPreProbeEnabled, ...restSettings } = this.settings;
 
     const settingsToSave = {
       ...restSettings,
@@ -691,6 +698,7 @@ export default class FastSync extends Plugin {
     await saveApiUrl(this.app, this, api || "");
     await saveVault(this.app, this, vault || "");
     await saveAutoRedirect(this.app, this, autoRedirectEnabled || false);
+    await saveWsPreProbe(this.app, this, wsPreProbeEnabled !== false);
 
     await this.saveData(settingsToSave)
   }
@@ -701,16 +709,13 @@ export default class FastSync extends Plugin {
   }
 
   reloadServices(forceRegister: boolean = true, setItem: string = "") {
+    if (setItem === "api" || !this.runApi) {
+      this.runApi = this.settings.api;
+      this.runWsApi = this.settings.api ? this.settings.api.replace(/^http/, "ws") : "";
+    }
+
     if (forceRegister && this.settings.api && this.settings.apiToken) {
-      if (this.settings.manualSyncEnabled) {
-        dump("Manual sync mode enabled, skipping automatic WebSocket registration")
-        this.websocket?.unRegister()
-        this.isWatchEnabled = false
-        this.updateStatusBar("")
-        return
-      }
-      // 1. 前置探测跳转，更新 runApi (后台异步执行)
-      this.api?.probeApiRedirect().then(() => {
+      const runRegister = () => {
         if (this.wsSettingChange) {
           this.websocket?.unRegister()
           this.wsSettingChange = false
@@ -734,9 +739,19 @@ export default class FastSync extends Plugin {
             this.syncTimer = null
           }, 2000)
         }
-      }).catch(e => {
-        dumpError("Fast Note Sync: Background API probe failed", e)
-      })
+      };
+
+      const needProbe = this.settings.autoRedirectEnabled || this.settings.wsPreProbeEnabled;
+      if (needProbe) {
+        // 1. 前置探测跳转，更新 runApi (后台异步执行)
+        this.api?.probeApiRedirect().then(() => {
+          runRegister();
+        }).catch(e => {
+          dumpError("Fast Note Sync: Background API probe failed", e)
+        })
+      } else {
+        runRegister();
+      }
       this.ignoredFiles = new Set()
       this.ignoredConfigFiles = new Set()
       this.lastSyncMtime = new Map()

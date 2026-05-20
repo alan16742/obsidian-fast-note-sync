@@ -199,7 +199,11 @@ export class WebSocketClient {
     this.isRegister = true
 
     // 每次 ws 连接 / 重连 前 必须 先 /api/health 请求成功之后再请求ws
-    const isHealthy = await this.plugin.api.probeApiRedirect(this.plugin.runApi);
+    const needProbe = this.plugin.settings.autoRedirectEnabled || this.plugin.settings.wsPreProbeEnabled;
+    let isHealthy = true;
+    if (needProbe) {
+        isHealthy = await this.plugin.api.probeApiRedirect(this.plugin.runApi);
+    }
     if (!isHealthy) {
         dump("Health check failed before ws connect, scheduling reconnect...");
         if (this.plugin.settings.autoRedirectEnabled) {
