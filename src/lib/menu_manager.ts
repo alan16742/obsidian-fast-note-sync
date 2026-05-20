@@ -78,6 +78,9 @@ export class MenuManager {
   init() {
     // 初始化状态栏进度
     this.statusBarItem = this.plugin.addStatusBarItem();
+    // Hide by default on creation to avoid blank gaps in Obsidian status bar.
+    // 默认隐藏，避免在 Obsidian 状态栏中产生空白占位。
+    this.statusBarItem.addClass("fns-hidden");
 
     // 初始化并发控制状态栏指示器 / Initialize concurrency control status bar indicator
     this.concurrencyStatusBarItem = this.plugin.addStatusBarItem();
@@ -426,6 +429,19 @@ export class MenuManager {
   }
 
   updateStatusBar(text: string, current?: number, total?: number) {
+    // If there is no text and no progress values, hide the status bar item completely and return early to avoid unwanted DOM creation and empty outlines.
+    // 如果没有文本且没有进度数值，则彻底隐藏状态栏项并提前返回，避免多余的 DOM 创建和空边框显示。
+    if (!text && current === undefined && total === undefined) {
+      if (this.statusBarItem) {
+        this.statusBarItem.addClass("fns-hidden");
+      }
+      return;
+    }
+
+    if (this.statusBarItem) {
+      this.statusBarItem.removeClass("fns-hidden");
+    }
+
     if (!this.statusBarText) {
       this.statusBarItem.addClass("fast-note-sync-status-bar-progress");
 
